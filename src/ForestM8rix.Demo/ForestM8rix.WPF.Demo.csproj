@@ -15,7 +15,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Bau.Controls.SharpTreeView\ForestM8rix.Core.csproj" />
+    <!--<ProjectReference Include="..\Bau.Controls.SharpTreeView\ForestM8rix.Core.csproj" />-->
+    <ProjectReference Include="..\ForestM8rix.Core\ForestM8rix.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
