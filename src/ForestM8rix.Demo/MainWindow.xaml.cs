@@ -1,35 +1,46 @@
-п»їusing System;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media.Imaging;
+using System.Linq;
+using ForestM8rix.Core.Services;
+using ForestM8rix.Core.Interfaces;
 
 namespace ForestM8rix.Demo
 {
-	/// <summary>
-	///		Ventana de ejemplo
-	/// </summary>
-	public partial class MainWindow : Window
-	{
-		public MainWindow()
-		{
-			InitializeComponent();
+    public partial class MainWindow : Window
+    {
+        private ForestFilterService _filterService = new();
 
-			//treeView1.Root = new Nodes.FolderNode("c:\\");
-			//treeView1.ShowRoot = false;
+        public MainWindow()
+        {
+            InitializeComponent();
+            LoadDemoData();
+        }
 
-			//treeView2.Root = new Nodes.FolderNode("c:\\");
-			//treeView2.ShowRootExpander = true;
-		}
+        private void LoadDemoData()
+        {
+            var rootNode = new AssemblyViewModel("Hidden Root");
+            
+            // Генерируем тестовое дерево (1000 x 1000 = 1,000,000)
+            for (int i = 0; i < 1000; i++)
+            {
+                var parent = new AssemblyViewModel($"Folder {i}");
+                for (int j = 0; j < 1000; j++)
+                {
+                    parent.Children.Add(new AssemblyViewModel($"File {i}-{j}"));
+                }
+                rootNode.Children.Add(parent);
+            }
 
-		public static Image LoadIcon(string name)
-		{
+            MyTree.Root = rootNode;
+        }
 
-		// pack://application:,,,/ChessDataBase.Plugin;component/Resources/ChessBoard/
-			// var frame = BitmapFrame.Create(new Uri("/Resources/Images/" + name, UriKind.Relative));
-			var frame = BitmapFrame.Create(new Uri("pack://application:,,,/Images/" + name, UriKind.Absolute));
-			Image result = new Image();
-			result.Source = frame;
-			return result;
-		}
-	}
+        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            string query = (sender as TextBox).Text;
+            var roots = MyTree.Root.Children.Cast<IForestM8rixNode>();
+            
+            // Наш сверхбыстрый движок
+            _filterService.ApplyFilter(roots, query);
+        }
+    }
 }

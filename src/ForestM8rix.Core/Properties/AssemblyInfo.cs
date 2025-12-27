@@ -14,8 +14,16 @@ using System.Windows.Markup;
 
 
   // [TAG] Сопоставление C# пространства имен с коротким URL для XAML
- [assembly: XmlnsDefinition("http://schemas.forestm8rix.com/2025/wpf", "ForestM8rix.Core")]
- [assembly: XmlnsDefinition("http://schemas.forestm8rix.com/2025/wpf", "ForestM8rix.Core.Controls")]
+ //[assembly: XmlnsDefinition("http://schemas.forestm8rix.com/2025/wpf", "ForestM8rix.Core")]
+ //[assembly: XmlnsDefinition("http://schemas.forestm8rix.com/2025/wpf", "ForestM8rix.Core.Controls")]
  
-  // [TAG] Назначение префикса по умолчанию (например, fm: вместо sd:)
- [assembly: XmlnsPrefix("http://schemas.forestm8rix.com/2025/wpf", "fm")]
+ // // [TAG] Назначение префикса по умолчанию (например, fm: вместо sd:)
+ //[assembly: XmlnsPrefix("http://schemas.forestm8rix.com/2025/wpf", "fm")]
+
+// Если вы положили контрол прямо в корень ForestM8rix.Core:
+[assembly: XmlnsDefinition("http://schemas.forestm8rix.com/2025/wpf", "ForestM8rix.Core")]
+
+// Если контрол лежит в папке Controls и у него namespace ForestM8rix.Core.Controls:
+[assembly: XmlnsDefinition("http://schemas.forestm8rix.com/2025/wpf", "ForestM8rix.Core.Controls")]
+
+[assembly: XmlnsDefinition("http://schemas.forestm8rix.com/2025/wpf", "ForestM8rix")]

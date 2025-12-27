@@ -15,7 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!--<ProjectReference Include="..\Bau.Controls.SharpTreeView\ForestM8rix.Core.csproj" />-->
     <ProjectReference Include="..\ForestM8rix.Core\ForestM8rix.Core.csproj" />
   </ItemGroup>
 
@@ -23,6 +22,10 @@
     <Resource Include="Images\File.png" />
     <Resource Include="Images\Folder.png" />
     <Resource Include="Images\FolderOpened.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Nodes\" />
   </ItemGroup>
 
 </Project>
