@@ -4,7 +4,7 @@ using System.Windows.Markup;
 using System.Windows.Data;
 using System.Globalization;
 
-namespace Bau.Controls.SharpTreeView.Converters
+namespace ForestM8rix.Converters
 {
     public class CollapsedWhenFalse : MarkupExtension, IValueConverter
     {

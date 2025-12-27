@@ -3,7 +3,7 @@ using System.Linq;
 using System.IO;
 using System.Windows;
 
-namespace Bau.Controls.SharpTreeView.Demo.Nodes
+namespace ForestM8rix.Demo.Nodes
 {
 	public class FolderNode : FileSystemNode
 	{

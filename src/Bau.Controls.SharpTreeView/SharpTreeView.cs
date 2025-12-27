@@ -8,10 +8,10 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Threading;
-using Bau.Controls.SharpTreeView.Adorners;
-using Bau.Controls.SharpTreeView.Models;
+using ForestM8rix.Adorners;
+using ForestM8rix.Models;
 
-namespace Bau.Controls.SharpTreeView
+namespace ForestM8rix
 {
     /// <summary>
     ///		Control que muestra un árbol con columnas adicionales

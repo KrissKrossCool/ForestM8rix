@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Collections.Specialized;
 
-namespace Bau.Controls.SharpTreeView
+namespace ForestM8rix
 {
 	/// <summary>
 	/// Collection that validates that inserted nodes do not have another parent.

@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 
-using Bau.Controls.SharpTreeView.Models;
+using ForestM8rix.Models;
 
-namespace Bau.Controls.SharpTreeView
+namespace ForestM8rix
 {
     // This part of SharpTreeNode controls the 'flat list' data structure, which emulates
     // a big flat list containing the whole tree; allowing access by visible index.

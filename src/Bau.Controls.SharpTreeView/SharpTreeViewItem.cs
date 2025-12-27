@@ -4,7 +4,7 @@ using System.Windows.Controls;
 using System.Windows;
 using System.Windows.Input;
 
-namespace Bau.Controls.SharpTreeView
+namespace ForestM8rix
 {
 	/// <summary>
 	///		Elemento del árbol

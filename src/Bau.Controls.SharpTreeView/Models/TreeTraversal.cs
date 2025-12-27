@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Bau.Controls.SharpTreeView.Models
+namespace ForestM8rix.Models
 {
     /// <summary>
     ///		Métodos estáticos para atravesar árboles

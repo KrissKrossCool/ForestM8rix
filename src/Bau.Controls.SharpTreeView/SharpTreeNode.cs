@@ -7,9 +7,9 @@ using System.ComponentModel;
 using System.Windows.Controls;
 using System.Collections.Specialized;
 using System.Windows.Media;
-using Bau.Controls.SharpTreeView.Models;
+using ForestM8rix.Models;
 
-namespace Bau.Controls.SharpTreeView
+namespace ForestM8rix
 {
     public partial class SharpTreeNode : INotifyPropertyChanged
 	{

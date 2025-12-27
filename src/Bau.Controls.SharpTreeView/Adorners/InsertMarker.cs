@@ -2,7 +2,7 @@
 using System.Windows.Controls;
 using System.Windows;
 
-namespace Bau.Controls.SharpTreeView.Adorners
+namespace ForestM8rix.Adorners
 {
     /// <summary>
     ///		Control de marcador del punto de inserción de un drop

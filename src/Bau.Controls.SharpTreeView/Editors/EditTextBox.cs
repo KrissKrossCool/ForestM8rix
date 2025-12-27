@@ -3,7 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows;
 
-namespace Bau.Controls.SharpTreeView.Editors
+namespace ForestM8rix.Editors
 {
     /// <summary>
     ///		Cuadro de texto de edición para el árbol

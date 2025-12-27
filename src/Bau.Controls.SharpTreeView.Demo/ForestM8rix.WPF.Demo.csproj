@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net7.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Bau.Controls.SharpTreeView\Bau.Controls.SharpTreeView.csproj" />
+    <ProjectReference Include="..\Bau.Controls.SharpTreeView\ForestM8rix.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

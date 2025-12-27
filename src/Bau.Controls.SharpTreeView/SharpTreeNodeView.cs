@@ -4,10 +4,10 @@ using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.ComponentModel;
-using Bau.Controls.SharpTreeView.Extensors;
-using Bau.Controls.SharpTreeView.Adorners;
+using ForestM8rix.Extensors;
+using ForestM8rix.Adorners;
 
-namespace Bau.Controls.SharpTreeView
+namespace ForestM8rix
 {
     public class SharpTreeNodeView : Control
 	{

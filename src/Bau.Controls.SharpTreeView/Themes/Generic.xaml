@@ -1,10 +1,10 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="clr-namespace:Bau.Controls.SharpTreeView"
-	xmlns:converters="clr-namespace:Bau.Controls.SharpTreeView.Converters"
-	xmlns:editors="clr-namespace:Bau.Controls.SharpTreeView.Editors"
-	xmlns:adorners="clr-namespace:Bau.Controls.SharpTreeView.Adorners"
+    xmlns:local="clr-namespace:ForestM8rix"
+	xmlns:converters="clr-namespace:ForestM8rix.Converters"
+	xmlns:editors="clr-namespace:ForestM8rix.Editors"
+	xmlns:adorners="clr-namespace:ForestM8rix.Adorners"
 	>
 
 	<SolidColorBrush x:Key="ListBorder"

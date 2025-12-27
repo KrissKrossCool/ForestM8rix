@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 
-namespace Bau.Controls.SharpTreeView.Demo
+namespace ForestM8rix.Demo
 {
 	/// <summary>
 	///		Ventana de ejemplo

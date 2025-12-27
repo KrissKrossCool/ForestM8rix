@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics;
 
-namespace Bau.Controls.SharpTreeView.Models
+namespace ForestM8rix.Models
 {
     /// <summary>
     ///     Colección que mantiene el árbol en una colección plana

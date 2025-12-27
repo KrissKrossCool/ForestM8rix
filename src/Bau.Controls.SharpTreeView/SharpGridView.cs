@@ -2,7 +2,7 @@
 using System.Windows.Controls;
 using System.Windows;
 
-namespace Bau.Controls.SharpTreeView
+namespace ForestM8rix
 {
 	/// <summary>
 	///		GridView para el árbol

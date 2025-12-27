@@ -2,7 +2,7 @@
 using System.Windows;
 using System.Windows.Media;
 
-namespace Bau.Controls.SharpTreeView.Adorners
+namespace ForestM8rix.Adorners
 {
     /// <summary>
     ///		Clase para el dibujo de líneas entre nodos

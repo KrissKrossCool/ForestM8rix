@@ -3,7 +3,7 @@ using System.Windows.Documents;
 using System.Windows;
 using System.Windows.Media;
 
-namespace Bau.Controls.SharpTreeView.Adorners
+namespace ForestM8rix.Adorners
 {
     /// <summary>
     ///		Adorner general

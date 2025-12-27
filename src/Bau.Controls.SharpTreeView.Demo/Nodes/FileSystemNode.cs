@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Windows;
 
-namespace Bau.Controls.SharpTreeView.Demo.Nodes
+namespace ForestM8rix.Demo.Nodes
 {
 	public abstract class FileSystemNode : SharpTreeNode
 	{

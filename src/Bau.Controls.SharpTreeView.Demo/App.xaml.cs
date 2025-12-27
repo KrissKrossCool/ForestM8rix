@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace Bau.Controls.SharpTreeView.Demo
+namespace ForestM8rix.Demo
 {
 	/// <summary>
 	/// Interaction logic for App.xaml
