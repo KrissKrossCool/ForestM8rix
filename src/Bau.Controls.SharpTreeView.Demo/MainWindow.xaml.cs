@@ -14,11 +14,11 @@ namespace ForestM8rix.Demo
 		{
 			InitializeComponent();
 
-			treeView1.Root = new Nodes.FolderNode("c:\\");
-			treeView1.ShowRoot = false;
+			//treeView1.Root = new Nodes.FolderNode("c:\\");
+			//treeView1.ShowRoot = false;
 
-			treeView2.Root = new Nodes.FolderNode("c:\\");
-			treeView2.ShowRootExpander = true;
+			//treeView2.Root = new Nodes.FolderNode("c:\\");
+			//treeView2.ShowRootExpander = true;
 		}
 
 		public static Image LoadIcon(string name)
