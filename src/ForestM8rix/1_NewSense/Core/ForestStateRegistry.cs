@@ -19,6 +19,8 @@ public static class ForestStateRegistry
     // Матрица состояний: Слои (Selection, Expansion)
     private static readonly List<BitArray> _selectionLayer = new();
     private static readonly List<BitArray> _expansionLayer = new();
+    private static readonly List<BitArray> _visibleLayer = new();
+
 
     // [TAG] Индекс-паспорт: неизменяемый (readonly) и только положительный (uint)
     private class StateIndex
@@ -47,6 +49,11 @@ public static class ForestStateRegistry
     }
 
     #region API управления состояниями
+
+    // [TAG] Слой видимости (Filter)
+
+    public static bool IsVisible(object node) => GetBit(node, _visibleLayer);
+    public static void SetVisible(object node, bool val) => SetBit(node, _visibleLayer, val);
 
     public static bool IsSelected(object node) => GetBit(node, _selectionLayer);
     public static void SetSelected(object node, bool val) => SetBit(node, _selectionLayer, val);
@@ -84,53 +91,3 @@ public static class ForestStateRegistry
     #endregion
 }
 
-/// <summary>
-/// Облегченный прокси-узел для WPF. 
-/// Создается только для видимых в UI элементов (виртуализация).
-/// </summary>
-public class ForestNodeProxy : INotifyPropertyChanged
-{
-    // Ссылка на исходный POCO-объект данных
-    public object RawData { get; }
-
-    public ForestNodeProxy(object data)
-    {
-        RawData = data ?? throw new ArgumentNullException(nameof(data));
-    }
-
-    // Свойства транслируют запросы в ForestStateRegistry
-    public bool IsSelected
-    {
-        get => ForestStateRegistry.IsSelected(RawData);
-        set
-        {
-            if (IsSelected != value)
-            {
-                ForestStateRegistry.SetSelected(RawData, value);
-                Notify();
-            }
-        }
-    }
-
-    public bool IsExpanded
-    {
-        get => ForestStateRegistry.IsExpanded(RawData);
-        set
-        {
-            if (IsExpanded != value)
-            {
-                ForestStateRegistry.SetExpanded(RawData, value);
-                Notify();
-            }
-        }
-    }
-
-    // Пример отображения текста (можно кастомизировать через шаблоны в XAML)
-    public string DisplayName => RawData.ToString();
-
-    #region INotifyPropertyChanged
-    public event PropertyChangedEventHandler PropertyChanged;
-    private void Notify([CallerMemberName] string p = "")
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
-    #endregion
-}

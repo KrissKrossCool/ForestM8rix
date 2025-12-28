@@ -12,6 +12,6 @@ public class Program
         // BenchmarkRunner.Run<ForestPerformanceTest>();
 
         // [TAG] Тест на 1 000 000 узлов через ForestFilterService
-        //BenchmarkRunner.Run<ForestFilterBenchmarks>();
+        BenchmarkRunner.Run<StateReadBenchmark>();
     }
 }

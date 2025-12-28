@@ -3,7 +3,7 @@ using System.Windows.Controls;
 using System.Linq;
 using ForestM8rix;
 using ForestM8rix.Services;
-using ForestM8rix.Interfaces;
+
 
 
 namespace ForestM8rix.Demo
@@ -39,7 +39,7 @@ namespace ForestM8rix.Demo
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             string query = (sender as TextBox).Text;
-            var roots = MyTree.Root.Children.Cast<IForestM8rixNode>();
+            var roots = MyTree.Root.Children;
             
             // Наш сверхбыстрый движок
             _filterService.ApplyFilter(roots, query);

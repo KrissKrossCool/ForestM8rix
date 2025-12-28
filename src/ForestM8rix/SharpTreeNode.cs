@@ -108,15 +108,15 @@ namespace ForestM8rix
 			get { return SystemColors.WindowTextBrush; }
 		}
 		
-		public virtual object? Icon
-		{
-			get { return null; }
-		}
+		//public virtual object? Icon
+		//{
+		//	get { return null; }
+		//}
 		
-		public virtual object? ToolTip
-		{
-			get { return null; }
-		}
+		//public virtual object? ToolTip
+		//{
+		//	get { return null; }
+		//}
 		
 		public int Level
 		{
@@ -152,17 +152,17 @@ namespace ForestM8rix
 			get { return isVisible; }
 		}
 		
-		bool isSelected;
+		//bool isSelected;
 		
-		public bool IsSelected {
-			get { return isSelected; }
-			set {
-				if (isSelected != value) {
-					isSelected = value;
-					RaisePropertyChanged("IsSelected");
-				}
-			}
-		}
+		//public bool IsSelected {
+		//	get { return isSelected; }
+		//	set {
+		//		if (isSelected != value) {
+		//			isSelected = value;
+		//			RaisePropertyChanged("IsSelected");
+		//		}
+		//	}
+		//}
 
 		internal protected virtual void OnChildrenChanged(NotifyCollectionChangedEventArgs e)
 		{
