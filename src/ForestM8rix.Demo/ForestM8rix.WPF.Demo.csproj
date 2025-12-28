@@ -15,10 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ForestM8rix.Core\ForestM8rix.Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Resource Include="Images\File.png" />
     <Resource Include="Images\Folder.png" />
     <Resource Include="Images\FolderOpened.png" />
@@ -26,6 +22,10 @@
 
   <ItemGroup>
     <Folder Include="Nodes\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ForestM8rix\ForestM8rix.csproj" />
   </ItemGroup>
 
 </Project>

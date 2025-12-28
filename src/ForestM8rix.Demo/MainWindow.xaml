@@ -2,6 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:fm="http://schemas.forestm8rix.com/2025/wpf"
+        
+        xmlns:test="http://schemas.forestm8rix.com/2025/wpf;assembly=ForestM8rix"
         Title="ForestM8rix Speed Demo" Height="450" Width="800">
         <!--xmlns:tv="clr-namespace:ICSharpCode.TreeView;assembly=ICSharpCode.TreeView"-->
     <Grid>
@@ -16,5 +18,6 @@
         </StackPanel>
 
         <fm:SharpTreeView x:Name="MyTree" Grid.Row="1" Margin="10" ShowRoot="False"/>
+        <!--<test:SharpTreeView x:Name="MyTree123" Grid.Row="1" Margin="10" ShowRoot="False"/>-->
     </Grid>
 </Window>

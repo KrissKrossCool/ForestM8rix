@@ -1,9 +1,9 @@
-﻿using ForestM8rix.Core.Interfaces;
+﻿using ForestM8rix.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ForestM8rix.Core.Services;
+namespace ForestM8rix.Services;
 
 public class ForestFilterService
 {

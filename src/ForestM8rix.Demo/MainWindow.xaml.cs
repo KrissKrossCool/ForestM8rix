@@ -1,8 +1,10 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Linq;
-using ForestM8rix.Core.Services;
-using ForestM8rix.Core.Interfaces;
+using ForestM8rix;
+using ForestM8rix.Services;
+using ForestM8rix.Interfaces;
+
 
 namespace ForestM8rix.Demo
 {

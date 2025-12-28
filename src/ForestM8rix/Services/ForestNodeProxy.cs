@@ -1,5 +1,6 @@
 ﻿namespace ForestM8rix.Core.Services;
 
+using ForestM8rix.Services;
 using System.ComponentModel;
 
 // 2. [СУТЬ] Прокси-узел для SharpTreeView

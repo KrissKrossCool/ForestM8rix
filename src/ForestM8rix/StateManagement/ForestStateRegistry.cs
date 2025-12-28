@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 using System.Threading;
 
-namespace ForestM8rix.Core.StateManagement;
+namespace ForestM8rix.StateManagement;
 
 /// <summary>
 /// Реестр состояний "Соты". 

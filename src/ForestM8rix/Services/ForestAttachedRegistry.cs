@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ForestM8rix.Core.Services;
+namespace ForestM8rix.Services;
 
 using System;
 using System.Collections.Generic;

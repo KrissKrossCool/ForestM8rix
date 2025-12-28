@@ -1,4 +1,4 @@
-namespace ForestM8rix.Core.Interfaces
+namespace ForestM8rix.Interfaces
 {
    // public interface IForestM8rixNode : ITreeTraversable<IForestM8rixNode>, IExpandableNode, IDisplayableNode, ISelectableNode { string Id { get; } }
 
@@ -44,6 +44,7 @@ namespace ForestM8rix.Core.Interfaces
         ISelectableNode
     {
         string Id { get; }
+        bool IsVisible { get; set; }
     }
 
     #endregion
