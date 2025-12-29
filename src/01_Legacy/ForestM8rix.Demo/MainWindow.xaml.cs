@@ -22,36 +22,58 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        //this.Loaded += OnLoaded;
-
-        // Создаем список ЯВНО
-        var data = new List<Item>();
-        data.Add(new Item { Title = "Чапаев" });
-        data.Add(new Item { Title = "Петька" });
-
-        // [СУТЬ] Сначала раскрываем программно через ВАШ реестр
-        ForestStateRegistry.SetExpanded(data[0], true);
-
-        ForestView.SetData(data, x => ((Item)x).Children);
-
-        // ПЕРЕДАЕМ (Проверьте, что имя ForestView совпадает с x:Name в XAML)
-        //this.ForestView.SetData(list, x => ((Item)x).Children);
+        this.Loaded += OnLoaded;
     }
 
+    // 2. Настройка в MainWindow
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        // 1. Создаем "мясо" для Чапаева
-        var data = new List<Item>
-    {
-        new Item
-        {
-            Title = "Чапаев (Корень)",
-            Children = new List<Item> { new Item { Title = "Петька (Сын)" } }
-        }
-    };
+        var mgr = ForestDisplay.Manager;
 
-        // [СУТЬ] 2. ПЕРЕДАЧА. Проверьте, что селектор возвращает Children
-        ForestView.SetData(data, x => ((Item)x).Children);
+        mgr.Columns.Clear();
+
+        // Красивые рабочие колонки
+        mgr.Columns.Add(new ForestColumn("Название", 250, n => (n as DemoItem)?.Title));
+        mgr.Columns.Add(new ForestColumn("Тип", 80, n => (n as DemoItem)?.Extension));
+        mgr.Columns.Add(new ForestColumn("Размер (МБ)", 100, n => (n as DemoItem)?.Size.ToString("F2")));
+
+        var data = GenerateDemoFiles();
+        mgr.SetSource(data, n => (n as DemoItem)?.SubItems);
+    }
+
+    private List<DemoItem> GenerateDemoFiles()
+    {
+        return new List<DemoItem>
+        {
+            new DemoItem("Проект_Альфа", "Папка", 0) {
+                SubItems = new List<DemoItem> {
+                    new DemoItem("Main.cs", "Файл", 1.2),
+                    new DemoItem("Styles.xaml", "Файл", 0.5),
+                    new DemoItem("Assets", "Папка", 0) {
+                        SubItems = new List<DemoItem> {
+                            new DemoItem("Logo.png", "Изображение", 2.4)
+                        }
+                    }
+                }
+            },
+            new DemoItem("Архив_2025", "Папка", 450.0)
+        };
+    }
+}
+
+// 1. Класс данных (Свойства должны быть публичными)
+public class DemoItem
+{
+    public string Title { get; set; }
+    public string Extension { get; set; }
+    public double Size { get; set; }
+    public List<DemoItem> SubItems { get; set; }
+
+    public DemoItem(string title, string ext, double size)
+    {
+        Title = title;
+        Extension = ext;
+        Size = size;
     }
 }
 

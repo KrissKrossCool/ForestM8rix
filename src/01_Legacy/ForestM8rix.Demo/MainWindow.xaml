@@ -8,12 +8,10 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid Background="Green">
-        <ScrollViewer x:Name="MainScroll" HorizontalScrollBarVisibility="Auto">
-            <m8:ForestM8rixView x:Name="ForestView"                                    
-                    MinHeight="200"
-                                MinWidth="200"
-                       Background="Transparent"                                
+        <!--<ScrollViewer x:Name="MainScroll" HorizontalScrollBarVisibility="Auto">
+        </ScrollViewer>-->
+            <m8:ForestM8rixView x:Name="ForestDisplay"                                    
+                                                
                                 />
-        </ScrollViewer>
     </Grid>
 </Window>

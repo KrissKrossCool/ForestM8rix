@@ -1,91 +1,229 @@
-﻿using System;
+﻿using ForestM8rix.StateManagement;
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Windows;
 using System.Windows.Media;
 
-namespace ForestM8rix
+namespace ForestM8rix;
+
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Field)]
+public class CoreInternalAttribute : Attribute { }
+
+public class ForestM8rixManager
 {
-    public class ForestM8rixManager
+    private readonly NodeRegistry _registry = new();
+    private readonly UIElement _host;
+    private IEnumerable _source;
+    private Func<object, IEnumerable> _childSelector;
+    private int _updateCounter = 0;
+
+    // Новое: Список колонок
+    public List<ForestColumn> Columns { get; } = new();
+
+    public double RowHeight { get; set; } = 24.0;
+    public double VerticalOffset { get; set; } = 0;
+
+    public int Count => _registry.Count;
+    public object[] Nodes => _registry.Nodes;
+    public int[] Levels => _registry.Levels;
+
+    public event EventHandler<CommandExecutedEventArgs> CommandExecuted;
+
+    public ForestM8rixManager(UIElement host)
     {
-        private readonly NodeRegistry _registry = new();
-        private readonly UIElement _host;
-        private IEnumerable _source;
-        private Func<object, IEnumerable> _childSelector;
+        _host = host;
 
-        public double RowHeight { get; set; } = 24.0;
-        public double VerticalOffset { get; set; } = 0;
+        // [СУТЬ] Если этого окна нет при запуске — мы правим "труп" кода
+        //System.Windows.MessageBox.Show("MANAGER CONSTRUCTOR CALLED");
+    }
 
-        public int Count => _registry.Count;
-        public object[] Nodes => _registry.Nodes;
-        public int[] Levels => _registry.Levels;
+    #region Управление данными и Обновление
 
-        public ForestM8rixManager(UIElement host)
+    public void SetSource(IEnumerable source, Func<object, IEnumerable> childSelector)
+    {
+        _source = source;
+        _childSelector = childSelector;
+        Refresh();
+    }
+
+    public IDisposable DeferRefresh() => new ForestUpdateContext(this);
+    internal void BeginUpdate() => Interlocked.Increment(ref _updateCounter);
+    internal void EndUpdate(string cmdName = "Generic", object result = null)
+    {
+        if (Interlocked.Decrement(ref _updateCounter) == 0)
         {
-            _host = host;
-        }
-
-        public void SetSource(IEnumerable source, Func<object, IEnumerable> childSelector)
-        {
-            _source = source;
-            _childSelector = childSelector;
             Refresh();
+            CommandExecuted?.Invoke(this, new CommandExecutedEventArgs(cmdName, result));
+        }
+    }
+
+    public void Refresh()
+    {
+        if (_source == null) return;
+        _registry.Process(_source, node => ForestStateRegistry.IsExpanded(node) ? _childSelector?.Invoke(node) : null);
+        _host.InvalidateVisual();
+    }
+
+    #endregion
+
+    #region Отрисовка (Табличный режим)
+
+    [CoreInternal]
+    public void Render(DrawingContext dc, Size renderSize)
+    {
+        // [ДАТЧИК] Если данных нет вообще
+        if (Nodes == null || Nodes.Length == 0)
+        {
+            var ftErr = new FormattedText("НЕТ ДАННЫХ (Nodes is null)", System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight, new Typeface("Segoe UI"), 20, Brushes.Yellow, VisualTreeHelper.GetDpi(_host).PixelsPerDip);
+            dc.DrawText(ftErr, new Point(10, 50));
+            return;
         }
 
-        public void Refresh()
+        // [ДАТЧИК] Если колонки не настроены
+        if (Columns.Count == 0)
         {
-            if (_source == null) return;
+            var ftErr = new FormattedText("КОЛОНКИ НЕ НАСТРОЕНЫ (Columns.Count == 0)", System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight, new Typeface("Segoe UI"), 20, Brushes.Orange, VisualTreeHelper.GetDpi(_host).PixelsPerDip);
+            dc.DrawText(ftErr, new Point(10, 80));
+            // Для теста рисуем хотя бы дефолтный текст, раз колонок нет
+            for (int i = 0; i < Nodes.Length; i++)
+                dc.DrawText(new FormattedText(Nodes[i].ToString(), System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 12, Brushes.White, 1.0), new Point(10, 110 + i * 20));
+            return;
+        }
 
-            _registry.Process(_source, node =>
+        double headerHeight = 30;
+        double dpi = VisualTreeHelper.GetDpi(_host).PixelsPerDip;
+        Typeface typeface = new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+        Pen gridPen = new Pen(Brushes.LightGray, 0.5);
+
+        // 1. ОТРИСОВКА ШАПКИ
+        dc.DrawRectangle(Brushes.WhiteSmoke, null, new Rect(0, 0, renderSize.Width, headerHeight));
+        double colX = 0;
+        foreach (var col in Columns)
+        {
+            var headFt = new FormattedText(col.Header, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                new Typeface(typeface.FontFamily, FontStyles.Normal, FontWeights.Bold, FontStretches.Normal), 12, Brushes.DimGray, dpi);
+            dc.DrawText(headFt, new Point(colX + 5, (headerHeight - headFt.Height) / 2));
+            colX += col.Width;
+            dc.DrawLine(gridPen, new Point(colX, 0), new Point(colX, renderSize.Height));
+        }
+        dc.DrawLine(gridPen, new Point(0, headerHeight), new Point(renderSize.Width, headerHeight));
+
+        // 2. ОТРИСОВКА СТРОК
+        double currentY = headerHeight - (VerticalOffset * RowHeight);
+
+        for (int i = 0; i < Nodes.Length; i++)
+        {
+            if (currentY + RowHeight < headerHeight) { currentY += RowHeight; continue; }
+            if (currentY > renderSize.Height) break;
+
+            object node = Nodes[i];
+            int level = Levels[i];
+            double cellX = 0;
+
+            dc.DrawLine(gridPen, new Point(0, currentY + RowHeight), new Point(renderSize.Width, currentY + RowHeight));
+
+            for (int c = 0; c < Columns.Count; c++)
             {
-                // Узел раскрыт только если он есть в словаре состояний со значением true
-                if (StateManagement.ForestStateRegistry.IsExpanded(node))
+                var col = Columns[c];
+                double textX = cellX + 5;
+
+                if (c == 0) // Первая колонка (Дерево)
                 {
-                    return _childSelector?.Invoke(node);
+                    double indent = level * 20.0;
+                    if (HasChildren(node))
+                    {
+                        bool isExp = StateManagement.ForestStateRegistry.IsExpanded(node);
+                        DrawExpander(dc, new Point(cellX + indent + 10, currentY + RowHeight / 2), isExp);
+                    }
+                    textX = cellX + indent + 25;
                 }
-                return null;
-            });
 
-            _host.InvalidateVisual();
+                string text = col.CellTextSelector?.Invoke(node) ?? "null";
+                var ft = new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, 12, Brushes.Black, dpi);
+
+                dc.PushClip(new RectangleGeometry(new Rect(cellX, currentY, col.Width, RowHeight)));
+                dc.DrawText(ft, new Point(textX, currentY + (RowHeight - ft.Height) / 2));
+                dc.Pop();
+
+                cellX += col.Width;
+            }
+            currentY += RowHeight;
         }
+    }
 
-        public void HandleClick(Point position)
+    private void DrawExpander(DrawingContext dc, Point center, bool isExpanded)
+    {
+        // СУТЬ: Простая отрисовка треугольника геометрии
+        var geometry = new StreamGeometry();
+        using (var context = geometry.Open())
         {
-            int index = (int)((position.Y + VerticalOffset) / RowHeight);
-            if (index >= 0 && index < _registry.Count)
-            {
-                object node = _registry.Nodes[index];
-                ToggleExpansion(node);
+            if (isExpanded)
+            { // Вниз
+                context.BeginFigure(new Point(center.X - 4, center.Y - 2), true, true);
+                context.LineTo(new Point(center.X + 4, center.Y - 2), true, false);
+                context.LineTo(new Point(center.X, center.Y + 3), true, false);
+            }
+            else
+            { // Вправо
+                context.BeginFigure(new Point(center.X - 2, center.Y - 4), true, true);
+                context.LineTo(new Point(center.X - 2, center.Y + 4), true, false);
+                context.LineTo(new Point(center.X + 3, center.Y), true, false);
             }
         }
+        dc.DrawGeometry(Brushes.Gray, null, geometry);
+    }
 
-        private void ToggleExpansion(object node)
+    #endregion
+
+    public void HandleClick(Point point)
+    {
+        double headerHeight = 30; // Должно совпадать с высотой в Render
+
+        // 1. СЕКЬЮРИТИ: Клик в шапку не должен раскрывать строки
+        if (point.Y < headerHeight) return;
+
+        // 2. РАСЧЕТ: Переводим пиксели в индекс узла
+        // Формула: (КликY - Шапка) / ВысотаСтроки + СмещениеСкролла
+        int rowIndex = (int)((point.Y - headerHeight) / RowHeight) + (int)VerticalOffset;
+
+        // ОТЛАДКА: Посмотри в Output, совпадает ли индекс с визуальной строкой
+        System.Diagnostics.Debug.WriteLine($"MANAGER_CLICK: Row={rowIndex}, TotalNodes={Nodes?.Length}");
+
+        if (Nodes != null && rowIndex >= 0 && rowIndex < Nodes.Length)
         {
-            bool currentState = StateManagement.ForestStateRegistry.IsExpanded(node);
-            StateManagement.ForestStateRegistry.SetExpanded(node, !currentState);
+            object node = Nodes[rowIndex];
+
+            // 3. ДЕЙСТВИЕ: Переключаем состояние (Open/Close)
+            StateManagement.ForestStateRegistry.Toggle(node);
+
+            // 4. ОБНОВЛЕНИЕ: Перестраиваем плоский список Nodes
             Refresh();
         }
+    }
 
-        public bool HasChildren(object node)
-        {
-            if (node == null || _childSelector == null) return false;
-            var children = _childSelector(node);
-            if (children == null) return false;
+    public bool HasChildren(object node)
+    {
+        if (node == null || _childSelector == null) return false;
 
-            // Проверка через приведение к коллекции или перечислитель
-            if (children is ICollection coll) return coll.Count > 0;
-            return children.Cast<object>().Any();
-        }
+        // Получаем результат через селектор, заданный в SetSource
+        var children = _childSelector(node);
+        if (children == null) return false;
 
-        public object GetItemAt(double y, out int index)
-        {
-            index = (int)((y + VerticalOffset) / RowHeight);
-            if (index >= 0 && index < _registry.Count)
-            {
-                return _registry.Nodes[index];
-            }
-            return null;
-        }
+        // Оптимизация: если это коллекция, проверяем Count
+        if (children is ICollection coll) return coll.Count > 0;
+
+        // Универсальная проверка для любого IEnumerable
+        return children.Cast<object>().Any();
+    }
+
+    public TResult Run<TResult>(IForestCommand<TResult> command)
+    {
+        using (DeferRefresh()) return command.Execute(this);
     }
 }

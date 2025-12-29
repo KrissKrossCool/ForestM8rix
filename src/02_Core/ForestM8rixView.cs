@@ -3,91 +3,133 @@ using System.Collections;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Input;
-using System.Windows.Controls;
 
 namespace ForestM8rix
 {
-    public class ForestM8rixView : Control
+    public class ForestM8rixView : ScrollLogic
     {
+        public ForestM8rixManager Manager => _manager;
         private readonly ForestM8rixManager _manager;
         public double RowHeight => _manager.RowHeight;
+
+        static ForestM8rixView()
+        {
+            DefaultStyleKeyProperty.OverrideMetadata(typeof(ForestM8rixView),
+                new FrameworkPropertyMetadata(typeof(ForestM8rixView)));
+        }
 
         public ForestM8rixView()
         {
             _manager = new ForestM8rixManager(this);
+            this.Background = Brushes.Transparent;
 
-            // [СУТЬ] Чтобы Background из XAML работал, нужно разрешить его отрисовку
-            // Иначе Control может игнорировать OnRender фоном
-            this.Background = Brushes.White;
+            // СУТЬ: Подписка на туннельное событие (спускается сверху вниз)
+            this.PreviewMouseDown += (s, e) => {
+                System.Diagnostics.Debug.WriteLine("CLICK DETECTED!");      };
 
-            // Обработка клика для раскрытия/свертывания
-            this.MouseDown += (s, e) =>
+            // СУТЬ: Используем туннельное событие, которое никто не успеет перехватить
+            this.PreviewMouseDown += (s, e) =>
             {
-                if (e.LeftButton == MouseButtonState.Pressed)
+                if (e.ChangedButton == MouseButton.Left)
                 {
-                    _manager.HandleClick(e.GetPosition(this));
+                    Point clickPoint = e.GetPosition(this);
+
+                    // 1. Отправляем в менеджер
+                    _manager.HandleClick(clickPoint);
+
+                    // 2. Форсируем перерисовку
+                    InvalidateVisual();
+
+                    // Опционально: e.Handled = true; // Если не хотим, чтобы клик шел дальше
                 }
             };
+        }
+
+        private void OnViewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed) return;
+
+            Point clickPoint = e.GetPosition(this);
+
+            // СУТЬ: Преобразование экранных координат в логические координаты данных
+            // С учетом того, что VerticalOffset в ScrollLogic у нас в "строках"
+            double logicalY = clickPoint.Y + (VerticalOffset * RowHeight);
+
+            Point logicalPoint = new Point(clickPoint.X, logicalY);
+
+            _manager.HandleClick(logicalPoint);
+        }
+
+        protected void OnMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            base.OnMouseDown(e);
+
+            // Получаем точку клика относительно контрола
+            Point clickPoint = e.GetPosition(this);
+
+            // Передаем координаты в менеджер. 
+            // Он сам вычислит, попали ли мы в строку или в треугольник экспандера.
+            _manager.HandleClick(clickPoint);
+
+            // Принудительно перерисовываем, чтобы увидеть изменения (открытую папку)
+            InvalidateVisual();
         }
 
         public void SetData(IEnumerable source, Func<object, IEnumerable> selector)
         {
             _manager.SetSource(source, selector);
+            UpdateScrollMetrics(); // СИНХРОНИЗАЦИЯ: Обновляем Extent при смене данных
             InvalidateMeasure();
             InvalidateVisual();
         }
 
-        protected override Size MeasureOverride(Size availableSize)
+        protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
         {
-            // Расчет желаемой высоты на основе количества строк
-            double desiredHeight = _manager.Count * RowHeight;
+            base.OnRenderSizeChanged(sizeInfo);
+            UpdateScrollMetrics(); // СИНХРОНИЗАЦИЯ: Обновляем Viewport при ресайзе
+        }
 
-            // Защита от 0 и NaN для корректной работы Layout
-            if (desiredHeight <= 0) desiredHeight = 1;
-
-            double width = double.IsInfinity(availableSize.Width) ? 200 : availableSize.Width;
-            double height = double.IsInfinity(availableSize.Height) ? desiredHeight : availableSize.Height;
-
-            return new Size(width, height);
+        private void UpdateScrollMetrics()
+        {
+            _scrollData.Extent.Height = _manager.Count; // В строках
+            _scrollData.Viewport.Height = Math.Floor(ActualHeight / RowHeight);
+            ScrollOwner?.InvalidateScrollInfo();
         }
 
         protected override void OnRender(DrawingContext dc)
         {
-            // Отрисовка фона
-            dc.DrawRectangle(Brushes.WhiteSmoke, null, new Rect(0, 0, ActualWidth, ActualHeight));
+            // [СУТЬ] Если вы здесь видите старый код с DrawText — удалите его!
+            // Этот метод должен ТОЛЬКО вызывать Manager.Render
 
-            if (_manager.Count == 0)
-            {
-                DrawText(dc, "ДАННЫХ НЕТ (Manager.Count == 0)", 10, 10, Brushes.Red);
-                return;
-            }
+            // Временная проверка: рисуем маленький синий квадрат, чтобы понять, что МЫ ТУТ
+            dc.DrawRectangle(Brushes.Blue, null, new Rect(0, 0, 50, 50));
 
-            RenderVisibleNodes(dc);
+            _manager.Render(dc, new Size(ActualWidth, ActualHeight));
         }
 
         private void RenderVisibleNodes(DrawingContext dc)
         {
             double indentStep = 20.0;
 
-            for (int i = 0; i < _manager.Count; i++)
-            {
-                double yPos = (i * RowHeight) - _manager.VerticalOffset;
+            // СУТЬ: Индекс первой видимой строки из ScrollLogic
+            int firstVisibleIndex = (int)VerticalOffset;
+            int lastVisibleIndex = firstVisibleIndex + (int)_scrollData.Viewport.Height + 1;
 
-                // Отрисовка только видимых элементов (куллинг)
-                if (yPos + RowHeight < 0) continue;
-                if (yPos > ActualHeight) break;
+            // Ограничиваем цикл только видимым диапазоном (Виртуализация отрисовки)
+            for (int i = firstVisibleIndex; i <= lastVisibleIndex && i < _manager.Count; i++)
+            {
+                // Построчный сдвиг: i - VerticalOffset всегда даст 0 для первой видимой строки
+                double yPos = (i - VerticalOffset) * RowHeight;
 
                 double xPos = (_manager.Levels[i] * indentStep) + 10;
                 object node = _manager.Nodes[i];
 
-                // Отрисовка маркера раскрытия (Expand/Collapse)
                 if (_manager.HasChildren(node))
                 {
                     bool isExpanded = StateManagement.ForestStateRegistry.IsExpanded(node);
                     DrawText(dc, isExpanded ? "▼" : "▶", xPos - 12, yPos, Brushes.Gray);
                 }
 
-                // Отрисовка текста узла
                 string content = node?.ToString() ?? "NULL";
                 DrawText(dc, content, xPos, yPos, Brushes.Black);
             }
@@ -96,7 +138,6 @@ namespace ForestM8rix
         private void DrawText(DrawingContext dc, string text, double x, double y, Brush color)
         {
             if (string.IsNullOrEmpty(text)) return;
-
             var ft = new FormattedText(
                 text,
                 System.Globalization.CultureInfo.InvariantCulture,
