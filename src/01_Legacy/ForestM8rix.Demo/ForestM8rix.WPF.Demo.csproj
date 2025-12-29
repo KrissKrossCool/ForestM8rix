@@ -25,7 +25,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ForestM8rix\ForestM8rix.csproj" />
+    <ProjectReference Include="..\..\02_Core\ForestM8rix.csproj">
+      <Private>True</Private>
+    </ProjectReference>
   </ItemGroup>
 
 </Project>

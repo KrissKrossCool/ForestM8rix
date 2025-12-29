@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+<PropertyGroup>
+  <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+  <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+</PropertyGroup>
+
+
+</Project>

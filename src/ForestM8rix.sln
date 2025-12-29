@@ -3,15 +3,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.1.11312.151
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForestM8rix", "ForestM8rix\ForestM8rix.csproj", "{C32BC719-E57B-49D9-B9EE-33C131BE1D60}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForestM8rix.WPF.Demo", "01_Legacy\ForestM8rix.Demo\ForestM8rix.WPF.Demo.csproj", "{023C8E4E-1458-4904-AC09-C8D4E44BFE8D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForestM8rix.WPF.Demo", "ForestM8rix.Demo\ForestM8rix.WPF.Demo.csproj", "{023C8E4E-1458-4904-AC09-C8D4E44BFE8D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForestM8rix.Benchmarks", "01_Legacy\ForestM8rix.Benchmarks\ForestM8rix.Benchmarks.csproj", "{043CBEE7-55D1-462E-A532-3766BC8A2F0D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForestM8rix.Benchmarks", "ForestM8rix.Benchmarks\ForestM8rix.Benchmarks.csproj", "{043CBEE7-55D1-462E-A532-3766BC8A2F0D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForestM8rix.Tests", "01_Legacy\ForestM8rix.Tests\ForestM8rix.Tests.csproj", "{AD41D845-F91B-40DB-82EC-6815C7764A95}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForestM8rix.Tests", "ForestM8rix.Tests\ForestM8rix.Tests.csproj", "{AD41D845-F91B-40DB-82EC-6815C7764A95}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForestM8rix.Test.AppConsole", "01_Legacy\ForestM8rix.Test.Console\ForestM8rix.Test.AppConsole.csproj", "{0A537675-F7C4-481D-916E-A59280BFDC8B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForestM8rix.Test.AppConsole", "ForestM8rix.Test.Console\ForestM8rix.Test.AppConsole.csproj", "{0A537675-F7C4-481D-916E-A59280BFDC8B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForestM8rix", "02_Core\ForestM8rix.csproj", "{55F8FB17-20D9-3050-67A9-D8B42EB29A8F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForestM8rix.Old", "01_Legacy\ForestM8rix.Old\ForestM8rix.Old.csproj", "{BB5876AA-CC80-AF35-B0EE-636512C41024}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,10 +21,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{C32BC719-E57B-49D9-B9EE-33C131BE1D60}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C32BC719-E57B-49D9-B9EE-33C131BE1D60}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C32BC719-E57B-49D9-B9EE-33C131BE1D60}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C32BC719-E57B-49D9-B9EE-33C131BE1D60}.Release|Any CPU.Build.0 = Release|Any CPU
 		{023C8E4E-1458-4904-AC09-C8D4E44BFE8D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{023C8E4E-1458-4904-AC09-C8D4E44BFE8D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{023C8E4E-1458-4904-AC09-C8D4E44BFE8D}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -39,6 +37,14 @@ Global
 		{0A537675-F7C4-481D-916E-A59280BFDC8B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0A537675-F7C4-481D-916E-A59280BFDC8B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0A537675-F7C4-481D-916E-A59280BFDC8B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{55F8FB17-20D9-3050-67A9-D8B42EB29A8F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55F8FB17-20D9-3050-67A9-D8B42EB29A8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55F8FB17-20D9-3050-67A9-D8B42EB29A8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55F8FB17-20D9-3050-67A9-D8B42EB29A8F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BB5876AA-CC80-AF35-B0EE-636512C41024}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BB5876AA-CC80-AF35-B0EE-636512C41024}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BB5876AA-CC80-AF35-B0EE-636512C41024}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BB5876AA-CC80-AF35-B0EE-636512C41024}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

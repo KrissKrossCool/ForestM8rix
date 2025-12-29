@@ -1,5 +1,7 @@
-﻿using System;
+﻿using ForestM8rix.StateManagement;
+using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Xml.Linq;
 
@@ -54,23 +56,50 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        var node = new TestNode();
-
-        // Подписка (как это делает WPF в фоне)
-        node.PropertyChanged += (s, e) =>
-            Console.WriteLine($"   [UI] !!! Ура! Получено уведомление о: {e.PropertyName}");
-
-        Console.WriteLine("--- УСЛОВИЕ 1: ЛОЖНОЕ (Только DIM) ---");
-        node.Name = "Ошибка";
-        ((IForestNotify)node).NotifyDIM("Name");
-        Console.WriteLine("Результат: UI промолчал.");
-
-        Console.WriteLine("\n--- УСЛОВИЕ 2: ВЕРНОЕ (Проброс в базу) ---");
-        node.Name = "Успех";
-        node.NotifyCorrect("Name");
-        Console.WriteLine("Результат: UI обновился.");
+        ForestBenchmark benchmark = new ForestBenchmark();
+        benchmark.Run();
 
         Console.WriteLine("\nНажмите Enter для выхода...");
         Console.ReadLine();
+    }
+}
+
+public class ForestBenchmark
+{
+    class DuckNode { public uint ForestM8rixId { get; set; } }
+    class CleanNode { }
+
+    public void Run()
+    {
+        int count = 10_000_000;
+        var ducks = new List<DuckNode>(count);
+        var cleans = new List<CleanNode>(count);
+
+        for (int i = 0; i < count; i++)
+        {
+            ducks.Add(new DuckNode());
+            cleans.Add(new CleanNode());
+        }
+
+        Console.WriteLine($"--- Тест на {count} объектов ---");
+
+        // 1. Замер: Duck Typing (Уточка)
+        var sw = Stopwatch.StartNew();
+        for (int i = 0; i < count; i++)
+            ForestStateRegistry.SetExpanded(ducks[i], true);
+        sw.Stop();
+        Console.WriteLine($"Duck Path (ID Field): {sw.ElapsedMilliseconds} ms");
+
+        // 2. Замер: ConditionalWeakTable (Красава)
+        sw.Restart();
+        for (int i = 0; i < count; i++)
+            ForestStateRegistry.SetExpanded(cleans[i], true);
+        sw.Stop();
+        Console.WriteLine($"Standard Path (CWT): {sw.ElapsedMilliseconds} ms");
+
+        // 3. Валидация
+        bool allOk = ForestStateRegistry.IsExpanded(ducks[500]) &&
+                     ForestStateRegistry.IsExpanded(cleans[500]);
+        Console.WriteLine($"[VALIDATION] Данные сохранены: {allOk}");
     }
 }
