@@ -426,7 +426,7 @@ public class ForestM8rixManager
     }
 
 
-
+    // ЗАМЕНИТЬ HandleKeyDown
     public void HandleKeyDown(Key key)
     {
         if (Nodes == null || Nodes.Length == 0) return;
@@ -435,14 +435,10 @@ public class ForestM8rixManager
         if (key == Key.A && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
         {
             StateManagement.ForestStateRegistry.SelectAll();
-
-            // Выбираем последний элемент как "активный"
-            _lastSelectedNode = Nodes.Length > 0 ? Nodes[Nodes.Length - 1] : null;
-            _anchorIndex = Nodes.Length > 0 ? Nodes.Length - 1 : -1;
-
+            // НЕ скроллим, просто перерисовываем
             _host.InvalidateVisual();
             NotifySelectionUpdated();
-            return; // Выходим
+            return;
         }
 
         int currentIndex = -1;
@@ -459,32 +455,26 @@ public class ForestM8rixManager
                 if (currentIndex == -1) SelectRow(0, false);
                 else if (currentIndex > 0) SelectRow(currentIndex - 1, isShift);
                 break;
-
             case Key.Down:
                 if (currentIndex == -1) SelectRow(0, false);
                 else if (currentIndex < Nodes.Length - 1) SelectRow(currentIndex + 1, isShift);
                 break;
-
-            case Key.Right:
-                if (currentIndex != -1) HandleRightArrow(currentIndex);
-                break;
-
             case Key.Left:
                 if (currentIndex != -1) HandleLeftArrow(currentIndex);
                 break;
-
-            // --- [NEW] Home & End ---
+            case Key.Right:
+                if (currentIndex != -1) HandleRightArrow(currentIndex);
+                break;
             case Key.Home:
                 SelectRow(0, isShift);
                 break;
-
             case Key.End:
                 SelectRow(Nodes.Length - 1, isShift);
                 break;
         }
     }
 
-
+    // ЗАМЕНИТЬ SelectRow
     private void SelectRow(int targetIndex, bool isShift)
     {
         var targetNode = Nodes[targetIndex];
@@ -492,26 +482,61 @@ public class ForestM8rixManager
         if (isShift)
         {
             if (_anchorIndex == -1) _anchorIndex = targetIndex;
-            ForestStateRegistry.ClearSelection();
+            StateManagement.ForestStateRegistry.ClearSelection();
             int start = Math.Min(_anchorIndex, targetIndex);
             int end = Math.Max(_anchorIndex, targetIndex);
             for (int i = start; i <= end; i++)
             {
-                ForestStateRegistry.SetSelected(Nodes[i], true);
+                StateManagement.ForestStateRegistry.SetSelected(Nodes[i], true);
             }
         }
         else
         {
-            ForestStateRegistry.ClearSelection();
-            ForestStateRegistry.SetSelected(targetNode, true);
+            StateManagement.ForestStateRegistry.ClearSelection();
+            StateManagement.ForestStateRegistry.SetSelected(targetNode, true);
             _anchorIndex = targetIndex;
         }
 
         _lastSelectedNode = targetNode;
+
+        // СНАЧАЛА просим проскроллить
+
+        // ПОТОМ просим перерисовать. InvalidateVisual - асинхронная команда.
         _host.InvalidateVisual();
+        NotifySelectionUpdated();
         RequestScrollIntoView?.Invoke(targetIndex);
-        NotifySelectionUpdated(); // [NEW] Уведомляем View
     }
+
+
+
+
+    //private void SelectRow(int targetIndex, bool isShift)
+    //{
+    //    var targetNode = Nodes[targetIndex];
+
+    //    if (isShift)
+    //    {
+    //        if (_anchorIndex == -1) _anchorIndex = targetIndex;
+    //        ForestStateRegistry.ClearSelection();
+    //        int start = Math.Min(_anchorIndex, targetIndex);
+    //        int end = Math.Max(_anchorIndex, targetIndex);
+    //        for (int i = start; i <= end; i++)
+    //        {
+    //            ForestStateRegistry.SetSelected(Nodes[i], true);
+    //        }
+    //    }
+    //    else
+    //    {
+    //        ForestStateRegistry.ClearSelection();
+    //        ForestStateRegistry.SetSelected(targetNode, true);
+    //        _anchorIndex = targetIndex;
+    //    }
+
+    //    _lastSelectedNode = targetNode;
+    //    _host.InvalidateVisual();
+    //    RequestScrollIntoView?.Invoke(targetIndex);
+    //    NotifySelectionUpdated(); // [NEW] Уведомляем View
+    //}
 
     private void HandleRightArrow(int index)
     {
