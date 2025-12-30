@@ -11,7 +11,7 @@
         <!--<ScrollViewer x:Name="MainScroll" HorizontalScrollBarVisibility="Auto">
         </ScrollViewer>-->
             <m8:ForestM8rixView x:Name="ForestDisplay"                                    
-                                                
+                                          m8:ForestM8rixOptions.IsRubberBandEnabled="True"      
                                 />
     </Grid>
 </Window>

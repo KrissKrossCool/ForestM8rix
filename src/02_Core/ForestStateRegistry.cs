@@ -76,6 +76,21 @@ public static class ForestStateRegistry
             layer[cellIdx].Set((int)(id % CELL_SIZE), val);
         }
     }
+
+
+    public static void ClearSelection()
+    {
+        lock (_selectionLayer)
+        {
+            // Очищаем каждый BitArray в слое выделения
+            foreach (var ba in _selectionLayer)
+            {
+                ba.SetAll(false);
+            }
+        }
+    }
+
+
     #endregion
 }
 

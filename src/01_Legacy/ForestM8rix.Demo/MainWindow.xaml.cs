@@ -1,96 +1,74 @@
 ﻿using ForestM8rix;
-using ForestM8rix.StateManagement;
-using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace ForestM8rix.WPF.Demo;
 
-/// <summary>
-/// Логика взаимодействия для MainWindow.xaml
-/// </summary>
 public partial class MainWindow : Window
 {
     public MainWindow()
     {
         InitializeComponent();
-        this.Loaded += OnLoaded;
+        Loaded += MainWindow_Loaded;
     }
 
-    // 2. Настройка в MainWindow
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        var mgr = ForestDisplay.Manager;
+        var mgr = ForestDisplay.Manager; // ForestView - имя из XAML
 
+        // 1. НАСТРОЙКА КОЛОНОК
         mgr.Columns.Clear();
 
-        // Красивые рабочие колонки
+        // Используем конструктор, как в вашем примере
         mgr.Columns.Add(new ForestColumn("Название", 250, n => (n as DemoItem)?.Title));
-        mgr.Columns.Add(new ForestColumn("Тип", 80, n => (n as DemoItem)?.Extension));
-        mgr.Columns.Add(new ForestColumn("Размер (МБ)", 100, n => (n as DemoItem)?.Size.ToString("F2")));
+        mgr.Columns.Add(new ForestColumn("ID", 80, n => (n as DemoItem)?.Id.ToString()));
+        mgr.Columns.Add(new ForestColumn("Статус", 120, n => (n as DemoItem)?.Status));
 
-        var data = GenerateDemoFiles();
-        mgr.SetSource(data, n => (n as DemoItem)?.SubItems);
+        // 2. ГЕНЕРАЦИЯ ДАННЫХ
+        var data = GenerateData(1000, 3);
+
+        // 3. ЗАГРУЗКА
+        ForestDisplay.SetData(data, node => ((DemoItem)node).Children);
     }
 
-    private List<DemoItem> GenerateDemoFiles()
+    // Класс данных (переименовал в DemoItem для соответствия сниппету)
+    public class DemoItem
     {
-        return new List<DemoItem>
+        public string Title { get; set; }
+        public int Id { get; set; }
+        public string Status { get; set; }
+        public List<DemoItem> Children { get; set; } = new();
+    }
+
+    private List<DemoItem> GenerateData(int count, int depth)
+    {
+        var list = new List<DemoItem>();
+        int idCounter = 0;
+
+        for (int i = 0; i < count; i++)
         {
-            new DemoItem("Проект_Альфа", "Папка", 0) {
-                SubItems = new List<DemoItem> {
-                    new DemoItem("Main.cs", "Файл", 1.2),
-                    new DemoItem("Styles.xaml", "Файл", 0.5),
-                    new DemoItem("Assets", "Папка", 0) {
-                        SubItems = new List<DemoItem> {
-                            new DemoItem("Logo.png", "Изображение", 2.4)
-                        }
-                    }
+            var node = new DemoItem
+            {
+                Title = $"Root Item {i}",
+                Id = ++idCounter,
+                Status = i % 2 == 0 ? "Active" : "Closed"
+            };
+
+            if (depth > 0)
+            {
+                for (int j = 0; j < 5; j++)
+                {
+                    var child = new DemoItem
+                    {
+                        Title = $"Child {i}-{j}",
+                        Id = ++idCounter,
+                        Status = "Pending"
+                    };
+                    node.Children.Add(child);
                 }
-            },
-            new DemoItem("Архив_2025", "Папка", 450.0)
-        };
+            }
+            list.Add(node);
+        }
+        return list;
     }
-}
-
-// 1. Класс данных (Свойства должны быть публичными)
-public class DemoItem
-{
-    public string Title { get; set; }
-    public string Extension { get; set; }
-    public double Size { get; set; }
-    public List<DemoItem> SubItems { get; set; }
-
-    public DemoItem(string title, string ext, double size)
-    {
-        Title = title;
-        Extension = ext;
-        Size = size;
-    }
-}
-
-public class NodeItem
-{
-    public string Title { get; set; } = "";
-    public uint ForestM8rixId { get; set; } // Для нашего движка
-    public List<NodeItem>? Children { get; set; }
-
-    // [СУТЬ] Чтобы текст отображался в OnRender
-    public override string ToString() => Title;
-}
-
-public class Item
-{
-    public string Title { get; set; }
-    //public uint ForestM8rixId { get; set; }
-    public List<Item> Children { get; set; } = new();
-    public override string ToString() => Title;
 }
