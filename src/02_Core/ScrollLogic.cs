@@ -32,6 +32,8 @@ namespace ForestM8rix
         private ScrollBar _verticalScrollBar;
         private ScrollBar _horizontalScrollBar;
 
+        public double ViewportHeight => _scrollData.Viewport.Height;
+
         public double VerticalOffset
         {
             get => _scrollData.Offset.Y;

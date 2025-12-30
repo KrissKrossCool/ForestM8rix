@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections;
 using System.Windows;
-using System.Windows.Media;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace ForestM8rix
 {
@@ -26,6 +26,9 @@ namespace ForestM8rix
             _manager = new ForestM8rixManager(this);
             this.Background = Brushes.Transparent;
             this.Focusable = true;
+
+            // Подписка на автоматическую прокрутку
+            _manager.RequestScrollIntoView += ScrollRowIntoView;
         }
 
         public void SetData(IEnumerable source, Func<object, IEnumerable> selector)
@@ -36,6 +39,18 @@ namespace ForestM8rix
             InvalidateVisual();
         }
 
+        // === ВВОД: КЛАВИАТУРА ===
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.Key == Key.Up || e.Key == Key.Down || e.Key == Key.Left || e.Key == Key.Right)
+            {
+                _manager.HandleKeyDown(e.Key);
+                e.Handled = true; // Перехватываем управление
+            }
+            base.OnKeyDown(e);
+        }
+
+        // === ВВОД: МЫШЬ (КЛИК) ===
         protected override void OnPreviewMouseDown(MouseButtonEventArgs e)
         {
             base.OnPreviewMouseDown(e);
@@ -43,33 +58,39 @@ namespace ForestM8rix
             if (e.ChangedButton == MouseButton.Left)
             {
                 this.Focus();
-                _manager.VerticalOffset = this.VerticalOffset; // Синхронизация
+
+                // СИНХРОНИЗАЦИЯ
+                _manager.VerticalOffset = this.VerticalOffset;
+                _manager.HorizontalOffset = this.HorizontalOffset;
 
                 Point p = e.GetPosition(this);
 
-                // 1. Сначала ВСЕГДА запоминаем точку старта (даже если драга не будет)
+                // 1. Запоминаем старт
                 _dragStartPoint = p;
                 _isDraggingSelection = false;
 
-                // 2. Обрабатываем клик (Выделение строки)
+                // 2. Обрабатываем клик
                 _manager.HandleClick(p);
 
-                // 3. Захватываем мышь на случай, если пользователь начнет тянуть
+                // 3. Захват
                 CaptureMouse();
             }
         }
 
+        // === ВВОД: МЫШЬ (ДРАГ / ХОВЕР) ===
         protected override void OnMouseMove(MouseEventArgs e)
         {
-            _manager.VerticalOffset = this.VerticalOffset; // Синхронизация
+            // СИНХРОНИЗАЦИЯ
+            _manager.VerticalOffset = this.VerticalOffset;
+            _manager.HorizontalOffset = this.HorizontalOffset;
 
             if (IsMouseCaptured && e.LeftButton == MouseButtonState.Pressed)
             {
                 Point current = e.GetPosition(this);
                 Vector diff = _dragStartPoint - current;
 
-                // СУТЬ: Проверяем порог драга (5px) И включен ли режим рамки
-                if ((Math.Abs(diff.X) > 5 || Math.Abs(diff.Y) > 5))
+                // Логика рамки (Rubber Band)
+                if (Math.Abs(diff.X) > 5 || Math.Abs(diff.Y) > 5)
                 {
                     if (_manager.IsRubberBandEnabled)
                     {
@@ -85,9 +106,9 @@ namespace ForestM8rix
             }
         }
 
+        // === ВВОД: МЫШЬ (ОТПУСКАНИЕ) ===
         protected override void OnMouseUp(MouseButtonEventArgs e)
         {
-            // СУТЬ: Гарантированный сброс всех состояний
             if (IsMouseCaptured)
             {
                 ReleaseMouseCapture();
@@ -108,31 +129,51 @@ namespace ForestM8rix
             if (!IsMouseCaptured) _manager.HandleMouseLeave();
         }
 
-        protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
+        // === ЛОГИКА СКРОЛЛА И РЕНДЕРА ===
+
+        // Метод умной прокрутки к строке
+        private void ScrollRowIntoView(int rowIndex)
         {
-            base.OnRenderSizeChanged(sizeInfo);
-            UpdateScrollMetrics();
+            if (RowHeight < double.Epsilon) return;
+            if (ActualHeight < double.Epsilon) return;
+
+            double viewportRows = Math.Floor(ActualHeight / RowHeight);
+            if (viewportRows < 1.0) viewportRows = 1.0;
+
+            if (rowIndex < VerticalOffset)
+            {
+                SetVerticalOffset(rowIndex);
+            }
+            else if (rowIndex >= VerticalOffset + viewportRows)
+            {
+                SetVerticalOffset(rowIndex - viewportRows + 1);
+            }
         }
 
-
+        // Обновление размеров скроллбаров
         private void UpdateScrollMetrics()
         {
             _scrollData.Extent.Height = _manager.Count;
             if (RowHeight > 0)
                 _scrollData.Viewport.Height = Math.Floor(ActualHeight / RowHeight);
 
-            // [NEW] Горизонтальные метрики
             _scrollData.Extent.Width = _manager.TotalWidth;
             _scrollData.Viewport.Width = ActualWidth;
 
             base.UpdateScrollMetrics();
         }
 
+        protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
+        {
+            base.OnRenderSizeChanged(sizeInfo);
+            UpdateScrollMetrics();
+        }
 
         protected override void OnRender(DrawingContext dc)
         {
             _manager.VerticalOffset = this.VerticalOffset;
             _manager.HorizontalOffset = this.HorizontalOffset;
+
             _manager.Render(dc, new Size(ActualWidth, ActualHeight));
         }
     }

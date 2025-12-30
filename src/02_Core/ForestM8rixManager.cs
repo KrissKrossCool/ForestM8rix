@@ -1,242 +1,11 @@
-﻿//using ForestM8rix.StateManagement;
-//using System;
-//using System.Collections;
-//using System.Collections.Generic;
-//using System.Globalization;
-//using System.Linq;
-//using System.Threading;
-//using System.Windows;
-//using System.Windows.Media;
-
-//namespace ForestM8rix;
-
-//[AttributeUsage(AttributeTargets.Method | AttributeTargets.Field)]
-//public class CoreInternalAttribute : Attribute { }
-
-//public class ForestM8rixManager
-//{
-//    private readonly NodeRegistry _registry = new();
-//    private readonly UIElement _host;
-//    private IEnumerable _source;
-//    private Func<object, IEnumerable> _childSelector;
-//    private int _updateCounter = 0;
-
-//    // Новое: Список колонок
-//    public List<ForestColumn> Columns { get; } = new();
-
-//    public double RowHeight { get; set; } = 24.0;
-//    public double VerticalOffset { get; set; } = 0;
-
-//    public int Count => _registry.Count;
-//    public object[] Nodes => _registry.Nodes;
-//    public int[] Levels => _registry.Levels;
-
-//    public event EventHandler<CommandExecutedEventArgs> CommandExecuted;
-
-//    public ForestM8rixManager(UIElement host)
-//    {
-//        _host = host;
-
-//        // [СУТЬ] Если этого окна нет при запуске — мы правим "труп" кода
-//        //System.Windows.MessageBox.Show("MANAGER CONSTRUCTOR CALLED");
-//    }
-
-//    #region Управление данными и Обновление
-
-//    public void SetSource(IEnumerable source, Func<object, IEnumerable> childSelector)
-//    {
-//        _source = source;
-//        _childSelector = childSelector;
-//        Refresh();
-//    }
-
-//    public IDisposable DeferRefresh() => new ForestUpdateContext(this);
-//    internal void BeginUpdate() => Interlocked.Increment(ref _updateCounter);
-//    internal void EndUpdate(string cmdName = "Generic", object result = null)
-//    {
-//        if (Interlocked.Decrement(ref _updateCounter) == 0)
-//        {
-//            Refresh();
-//            CommandExecuted?.Invoke(this, new CommandExecutedEventArgs(cmdName, result));
-//        }
-//    }
-
-//    public void Refresh()
-//    {
-//        if (_source == null) return;
-//        _registry.Process(_source, node => ForestStateRegistry.IsExpanded(node) ? _childSelector?.Invoke(node) : null);
-//        _host.InvalidateVisual();
-//    }
-
-//    #endregion
-
-//    #region Отрисовка (Табличный режим)
-
-//    [CoreInternal]
-//    public void Render(DrawingContext dc, Size renderSize)
-//    {
-//        // [ДАТЧИК] Если данных нет вообще
-//        if (Nodes == null || Nodes.Length == 0)
-//        {
-//            var ftErr = new FormattedText("НЕТ ДАННЫХ (Nodes is null)", System.Globalization.CultureInfo.InvariantCulture,
-//                FlowDirection.LeftToRight, new Typeface("Segoe UI"), 20, Brushes.Yellow, VisualTreeHelper.GetDpi(_host).PixelsPerDip);
-//            dc.DrawText(ftErr, new Point(10, 50));
-//            return;
-//        }
-
-//        // [ДАТЧИК] Если колонки не настроены
-//        if (Columns.Count == 0)
-//        {
-//            var ftErr = new FormattedText("КОЛОНКИ НЕ НАСТРОЕНЫ (Columns.Count == 0)", System.Globalization.CultureInfo.InvariantCulture,
-//                FlowDirection.LeftToRight, new Typeface("Segoe UI"), 20, Brushes.Orange, VisualTreeHelper.GetDpi(_host).PixelsPerDip);
-//            dc.DrawText(ftErr, new Point(10, 80));
-//            // Для теста рисуем хотя бы дефолтный текст, раз колонок нет
-//            for (int i = 0; i < Nodes.Length; i++)
-//                dc.DrawText(new FormattedText(Nodes[i].ToString(), System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 12, Brushes.White, 1.0), new Point(10, 110 + i * 20));
-//            return;
-//        }
-
-//        double headerHeight = 30;
-//        double dpi = VisualTreeHelper.GetDpi(_host).PixelsPerDip;
-//        Typeface typeface = new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
-//        Pen gridPen = new Pen(Brushes.LightGray, 0.5);
-
-//        // 1. ОТРИСОВКА ШАПКИ
-//        dc.DrawRectangle(Brushes.WhiteSmoke, null, new Rect(0, 0, renderSize.Width, headerHeight));
-//        double colX = 0;
-//        foreach (var col in Columns)
-//        {
-//            var headFt = new FormattedText(col.Header, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-//                new Typeface(typeface.FontFamily, FontStyles.Normal, FontWeights.Bold, FontStretches.Normal), 12, Brushes.DimGray, dpi);
-//            dc.DrawText(headFt, new Point(colX + 5, (headerHeight - headFt.Height) / 2));
-//            colX += col.Width;
-//            dc.DrawLine(gridPen, new Point(colX, 0), new Point(colX, renderSize.Height));
-//        }
-//        dc.DrawLine(gridPen, new Point(0, headerHeight), new Point(renderSize.Width, headerHeight));
-
-//        // 2. ОТРИСОВКА СТРОК
-//        double currentY = headerHeight - (VerticalOffset * RowHeight);
-
-//        for (int i = 0; i < Nodes.Length; i++)
-//        {
-//            if (currentY + RowHeight < headerHeight) { currentY += RowHeight; continue; }
-//            if (currentY > renderSize.Height) break;
-
-//            object node = Nodes[i];
-//            int level = Levels[i];
-//            double cellX = 0;
-
-//            dc.DrawLine(gridPen, new Point(0, currentY + RowHeight), new Point(renderSize.Width, currentY + RowHeight));
-
-//            for (int c = 0; c < Columns.Count; c++)
-//            {
-//                var col = Columns[c];
-//                double textX = cellX + 5;
-
-//                if (c == 0) // Первая колонка (Дерево)
-//                {
-//                    double indent = level * 20.0;
-//                    if (HasChildren(node))
-//                    {
-//                        bool isExp = StateManagement.ForestStateRegistry.IsExpanded(node);
-//                        DrawExpander(dc, new Point(cellX + indent + 10, currentY + RowHeight / 2), isExp);
-//                    }
-//                    textX = cellX + indent + 25;
-//                }
-
-//                string text = col.CellTextSelector?.Invoke(node) ?? "null";
-//                var ft = new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, 12, Brushes.Black, dpi);
-
-//                dc.PushClip(new RectangleGeometry(new Rect(cellX, currentY, col.Width, RowHeight)));
-//                dc.DrawText(ft, new Point(textX, currentY + (RowHeight - ft.Height) / 2));
-//                dc.Pop();
-
-//                cellX += col.Width;
-//            }
-//            currentY += RowHeight;
-//        }
-//    }
-
-//    private void DrawExpander(DrawingContext dc, Point center, bool isExpanded)
-//    {
-//        // СУТЬ: Простая отрисовка треугольника геометрии
-//        var geometry = new StreamGeometry();
-//        using (var context = geometry.Open())
-//        {
-//            if (isExpanded)
-//            { // Вниз
-//                context.BeginFigure(new Point(center.X - 4, center.Y - 2), true, true);
-//                context.LineTo(new Point(center.X + 4, center.Y - 2), true, false);
-//                context.LineTo(new Point(center.X, center.Y + 3), true, false);
-//            }
-//            else
-//            { // Вправо
-//                context.BeginFigure(new Point(center.X - 2, center.Y - 4), true, true);
-//                context.LineTo(new Point(center.X - 2, center.Y + 4), true, false);
-//                context.LineTo(new Point(center.X + 3, center.Y), true, false);
-//            }
-//        }
-//        dc.DrawGeometry(Brushes.Gray, null, geometry);
-//    }
-
-//    #endregion
-
-//    public void HandleClick(Point point)
-//    {
-//        double headerHeight = 30; // Должно совпадать с высотой в Render
-
-//        // 1. СЕКЬЮРИТИ: Клик в шапку не должен раскрывать строки
-//        if (point.Y < headerHeight) return;
-
-//        // 2. РАСЧЕТ: Переводим пиксели в индекс узла
-//        // Формула: (КликY - Шапка) / ВысотаСтроки + СмещениеСкролла
-//        int rowIndex = (int)((point.Y - headerHeight) / RowHeight) + (int)VerticalOffset;
-
-//        // ОТЛАДКА: Посмотри в Output, совпадает ли индекс с визуальной строкой
-//        System.Diagnostics.Debug.WriteLine($"MANAGER_CLICK: Row={rowIndex}, TotalNodes={Nodes?.Length}");
-
-//        if (Nodes != null && rowIndex >= 0 && rowIndex < Nodes.Length)
-//        {
-//            object node = Nodes[rowIndex];
-
-//            // 3. ДЕЙСТВИЕ: Переключаем состояние (Open/Close)
-//            StateManagement.ForestStateRegistry.Toggle(node);
-
-//            // 4. ОБНОВЛЕНИЕ: Перестраиваем плоский список Nodes
-//            Refresh();
-//        }
-//    }
-
-//    public bool HasChildren(object node)
-//    {
-//        if (node == null || _childSelector == null) return false;
-
-//        // Получаем результат через селектор, заданный в SetSource
-//        var children = _childSelector(node);
-//        if (children == null) return false;
-
-//        // Оптимизация: если это коллекция, проверяем Count
-//        if (children is ICollection coll) return coll.Count > 0;
-
-//        // Универсальная проверка для любого IEnumerable
-//        return children.Cast<object>().Any();
-//    }
-
-//    public TResult Run<TResult>(IForestCommand<TResult> command)
-//    {
-//        using (DeferRefresh()) return command.Execute(this);
-//    }
-//}
-
-
-using ForestM8rix.StateManagement;
+﻿using ForestM8rix.StateManagement;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Windows;
-using System.Windows.Input; // Важно для Keyboard.Modifiers
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace ForestM8rix;
@@ -246,16 +15,6 @@ public class CoreInternalAttribute : Attribute { }
 
 public class ForestM8rixManager
 {
-
-    // Настройка управление вкл/выкл - возможности выбора рамкой
-    public bool IsRubberBandEnabled { get; set; } = true;
-
-    public double HorizontalOffset { get; set; } = 0;
-
-    // Вычисляемое свойство общей ширины
-    public double TotalWidth => Columns.Sum(c => c.Width);
-
-
     private readonly NodeRegistry _registry = new();
     private readonly UIElement _host;
     private IEnumerable _source;
@@ -265,20 +24,23 @@ public class ForestM8rixManager
     // --- STATE MANAGEMENT ---
     public int HoveredRowIndex { get; private set; } = -1;
     private object _lastSelectedNode = null;
+    private int _anchorIndex = -1; // [NEW] Якорь для Shift-выделения
     public Rect SelectionRect { get; private set; } = Rect.Empty;
-    // ------------------------
+    public bool IsRubberBandEnabled { get; set; } = true;
 
-    // Новое: Список колонок
+    // --- SCROLL & LAYOUT ---
     public List<ForestColumn> Columns { get; } = new();
-
     public double RowHeight { get; set; } = 24.0;
     public double VerticalOffset { get; set; } = 0;
+    public double HorizontalOffset { get; set; } = 0;
+    public double TotalWidth => Columns.Sum(c => c.Width);
 
     public int Count => _registry.Count;
     public object[] Nodes => _registry.Nodes;
     public int[] Levels => _registry.Levels;
 
     public event EventHandler<CommandExecutedEventArgs> CommandExecuted;
+    public event Action<int> RequestScrollIntoView; // [NEW]
 
     public ForestM8rixManager(UIElement host)
     {
@@ -318,12 +80,20 @@ public class ForestM8rixManager
 
     #region Отрисовка (Табличный режим)
 
-    // Заменяем метод Render
     [CoreInternal]
     public void Render(DrawingContext dc, Size renderSize)
     {
-        if (Nodes == null || Nodes.Length == 0) return;
-        if (Columns.Count == 0) return;
+        if (Nodes == null || Nodes.Length == 0)
+        {
+            DrawErrorText(dc, "НЕТ ДАННЫХ (Nodes is null)", Brushes.Yellow, 50);
+            return;
+        }
+
+        if (Columns.Count == 0)
+        {
+            DrawErrorText(dc, "КОЛОНКИ НЕ НАСТРОЕНЫ", Brushes.Orange, 80);
+            return;
+        }
 
         double headerHeight = 30;
         double dpi = VisualTreeHelper.GetDpi(_host).PixelsPerDip;
@@ -331,18 +101,12 @@ public class ForestM8rixManager
         Pen gridPen = new Pen(Brushes.LightGray, 0.5);
 
         // === 1. ОТРИСОВКА ШАПКИ ===
-        // Рисуем фон шапки поверх всего
         dc.DrawRectangle(Brushes.WhiteSmoke, null, new Rect(0, 0, renderSize.Width, headerHeight));
-
-        // СУТЬ: Начальная позиция X сдвинута на величину скролла
         double colX = -HorizontalOffset;
 
-        // Clip для шапки, чтобы текст не вылезал влево при скролле
         dc.PushClip(new RectangleGeometry(new Rect(0, 0, renderSize.Width, headerHeight)));
-
         foreach (var col in Columns)
         {
-            // Оптимизация: не рисуем то, что ушло влево или еще не вышло справа
             if (colX + col.Width > 0 && colX < renderSize.Width)
             {
                 var headFt = new FormattedText(col.Header, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
@@ -353,14 +117,12 @@ public class ForestM8rixManager
             }
             colX += col.Width;
         }
-        dc.Pop(); // Снимаем клип шапки
-
+        dc.Pop();
         dc.DrawLine(gridPen, new Point(0, headerHeight), new Point(renderSize.Width, headerHeight));
 
         // === 2. ОТРИСОВКА СТРОК ===
         double currentY = headerHeight - (VerticalOffset * RowHeight);
 
-        // Клип для области данных (чтобы строки не рисовали поверх шапки)
         dc.PushClip(new RectangleGeometry(new Rect(0, headerHeight, renderSize.Width, renderSize.Height - headerHeight)));
 
         for (int i = 0; i < Nodes.Length; i++)
@@ -370,16 +132,13 @@ public class ForestM8rixManager
 
             object node = Nodes[i];
 
-            // Фон (Selection/Hover) рисуем на всю ширину (независимо от скролла)
-            bool isSelected = StateManagement.ForestStateRegistry.IsSelected(node);
-            bool isHovered = (i == HoveredRowIndex); // Предполагаем, что свойство доступно
+            bool isSelected = ForestStateRegistry.IsSelected(node);
 
             if (isSelected) dc.DrawRectangle(Brushes.LightSkyBlue, null, new Rect(0, currentY, renderSize.Width, RowHeight));
-            else if (isHovered) dc.DrawRectangle(Brushes.AliceBlue, null, new Rect(0, currentY, renderSize.Width, RowHeight));
+            else if (i == HoveredRowIndex) dc.DrawRectangle(Brushes.AliceBlue, null, new Rect(0, currentY, renderSize.Width, RowHeight));
 
-            // СУТЬ: Сброс X для каждой строки с учетом скролла
-            double cellX = -HorizontalOffset;
             int level = Levels[i];
+            double cellX = -HorizontalOffset;
 
             dc.DrawLine(gridPen, new Point(0, currentY + RowHeight), new Point(renderSize.Width, currentY + RowHeight));
 
@@ -387,17 +146,15 @@ public class ForestM8rixManager
             {
                 var col = Columns[c];
 
-                // Оптимизация по горизонтали
                 if (cellX + col.Width > 0 && cellX < renderSize.Width)
                 {
                     double textX = cellX + 5;
-
-                    if (c == 0) // Дерево
+                    if (c == 0)
                     {
                         double indent = level * 20.0;
                         if (HasChildren(node))
                         {
-                            bool isExp = StateManagement.ForestStateRegistry.IsExpanded(node);
+                            bool isExp = ForestStateRegistry.IsExpanded(node);
                             DrawExpander(dc, new Point(cellX + indent + 10, currentY + RowHeight / 2), isExp);
                         }
                         textX = cellX + indent + 25;
@@ -406,7 +163,6 @@ public class ForestM8rixManager
                     string text = col.CellTextSelector?.Invoke(node) ?? "";
                     var ft = new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, 12, Brushes.Black, dpi);
 
-                    // Клип ячейки
                     dc.PushClip(new RectangleGeometry(new Rect(cellX, currentY, col.Width, RowHeight)));
                     dc.DrawText(ft, new Point(textX, currentY + (RowHeight - ft.Height) / 2));
                     dc.Pop();
@@ -415,21 +171,15 @@ public class ForestM8rixManager
             }
             currentY += RowHeight;
         }
-        dc.Pop(); // Снимаем клип данных
+        dc.Pop();
 
-        // Отрисовка рамки (RubberBand)
         if (IsRubberBandEnabled && !SelectionRect.IsEmpty)
         {
-            // Рамку рисуем поверх, с учетом смещения или без?
-            // Обычно рамка привязана к экрану, координаты мыши уже экранные.
-            // Оставляем как есть.
             var brush = new SolidColorBrush(Color.FromArgb(76, 51, 153, 255));
             var border = new Pen(Brushes.RoyalBlue, 1);
             dc.DrawRectangle(brush, border, SelectionRect);
         }
     }
-
-
 
     private void DrawErrorText(DrawingContext dc, string text, Brush color, double y)
     {
@@ -443,13 +193,13 @@ public class ForestM8rixManager
         var geometry = new StreamGeometry();
         using (var context = geometry.Open())
         {
-            if (isExpanded) // Вниз
+            if (isExpanded)
             {
                 context.BeginFigure(new Point(center.X - 4, center.Y - 2), true, true);
                 context.LineTo(new Point(center.X + 4, center.Y - 2), true, false);
                 context.LineTo(new Point(center.X, center.Y + 3), true, false);
             }
-            else // Вправо
+            else
             {
                 context.BeginFigure(new Point(center.X - 2, center.Y - 4), true, true);
                 context.LineTo(new Point(center.X - 2, center.Y + 4), true, false);
@@ -461,7 +211,7 @@ public class ForestM8rixManager
 
     #endregion
 
-    #region Input Handling
+    #region Input Handling (Mouse & Keyboard)
 
     public void HandleMouseMove(Point point)
     {
@@ -490,11 +240,8 @@ public class ForestM8rixManager
         }
     }
 
-
-
     public void UpdateSelectionRect(Point start, Point end)
     {
-        // Защита: Если функционал выключен, ничего не делаем
         if (!IsRubberBandEnabled) return;
 
         double x = Math.Min(start.X, end.X);
@@ -504,8 +251,6 @@ public class ForestM8rixManager
         SelectionRect = new Rect(x, y, w, h);
 
         double headerHeight = 30;
-
-        // Защита от выхода за пределы данных
         if (y + h < headerHeight) return;
 
         double dataTop = Math.Max(y, headerHeight) - headerHeight;
@@ -518,44 +263,31 @@ public class ForestM8rixManager
         idxStart = Math.Max(0, idxStart);
         idxEnd = Math.Min(Nodes.Length - 1, idxEnd);
 
-        // Если не Ctrl — сбрасываем старое
-        if (!System.Windows.Input.Keyboard.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Control))
+        if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
         {
-            StateManagement.ForestStateRegistry.ClearSelection();
+            ForestStateRegistry.ClearSelection();
         }
 
         for (int i = idxStart; i <= idxEnd; i++)
         {
-            StateManagement.ForestStateRegistry.SetSelected(Nodes[i], true);
+            ForestStateRegistry.SetSelected(Nodes[i], true);
         }
 
         _host.InvalidateVisual();
     }
 
-
     public void ClearSelectionRect()
     {
-        // СУТЬ: Принудительно затираем рамку и перерисовываем, 
-        // даже если система думает, что она пустая (защита от артефактов)
         SelectionRect = Rect.Empty;
         _host.InvalidateVisual();
     }
 
-
-
-
     public void HandleClick(Point point)
     {
         double headerHeight = 30;
-        // Output debug logic removed for clean production code, add if needed
-        // [LOG] Вход в метод
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] MANAGER: HandleClick entered. Point={point.Y:F1}");
-
         if (point.Y < headerHeight) return;
 
         int rowIndex = (int)((point.Y - headerHeight) / RowHeight) + (int)VerticalOffset;
-
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] MANAGER: Calculated RowIndex={rowIndex}. TotalNodes={Nodes?.Length}");
 
         if (Nodes != null && rowIndex >= 0 && rowIndex < Nodes.Length)
         {
@@ -563,46 +295,160 @@ public class ForestM8rixManager
             int level = Levels[rowIndex];
 
             double indent = level * 20.0;
-            // Зона клика по треугольнику
-            if (point.X >= indent && point.X <= indent + 30 && HasChildren(node))
+            // Учет горизонтального скролла для экспандера
+            double expanderX = indent + 10 - HorizontalOffset;
+
+            // Зона клика по треугольнику (чуть шире)
+            if (point.X >= expanderX - 5 && point.X <= expanderX + 20 && HasChildren(node))
             {
                 ForestStateRegistry.Toggle(node);
                 Refresh();
             }
             else
             {
-                // --- MULTI-SELECTION LOGIC ---
                 if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
                 {
                     bool currentState = ForestStateRegistry.IsSelected(node);
                     ForestStateRegistry.SetSelected(node, !currentState);
                     _lastSelectedNode = node;
+                    _anchorIndex = rowIndex;
                 }
                 else if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && _lastSelectedNode != null)
                 {
-                    int lastIdx = Array.IndexOf(Nodes, _lastSelectedNode);
-                    if (lastIdx != -1)
-                    {
-                        int start = Math.Min(lastIdx, rowIndex);
-                        int end = Math.Max(lastIdx, rowIndex);
-                        if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-                            ForestStateRegistry.ClearSelection();
-                        for (int i = start; i <= end; i++) ForestStateRegistry.SetSelected(Nodes[i], true);
-                    }
-                    else
-                    {
-                        ForestStateRegistry.ClearSelection();
-                        ForestStateRegistry.SetSelected(node, true);
-                        _lastSelectedNode = node;
-                    }
+                    // Логика Shift+Click: от якоря до клика
+                    if (_anchorIndex == -1)
+                        _anchorIndex = Array.IndexOf(Nodes, _lastSelectedNode); // fallback
+
+                    ForestStateRegistry.ClearSelection();
+
+                    int start = Math.Min(_anchorIndex, rowIndex);
+                    int end = Math.Max(_anchorIndex, rowIndex);
+
+                    for (int i = start; i <= end; i++) ForestStateRegistry.SetSelected(Nodes[i], true);
+
+                    _lastSelectedNode = node;
                 }
                 else
                 {
                     ForestStateRegistry.ClearSelection();
                     ForestStateRegistry.SetSelected(node, true);
                     _lastSelectedNode = node;
+                    _anchorIndex = rowIndex;
                 }
                 _host.InvalidateVisual();
+            }
+        }
+    }
+
+    public void HandleKeyDown(Key key)
+    {
+        if (Nodes == null || Nodes.Length == 0) return;
+
+        int currentIndex = -1;
+        if (_lastSelectedNode != null)
+        {
+            currentIndex = Array.IndexOf(Nodes, _lastSelectedNode);
+        }
+
+        if (currentIndex == -1)
+        {
+            SelectRow(0, false);
+            return;
+        }
+
+        bool isShift = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+
+        switch (key)
+        {
+            case Key.Up:
+                if (currentIndex > 0)
+                    SelectRow(currentIndex - 1, isShift);
+                break;
+
+            case Key.Down:
+                if (currentIndex < Nodes.Length - 1)
+                    SelectRow(currentIndex + 1, isShift);
+                break;
+
+            case Key.Right:
+                HandleRightArrow(currentIndex);
+                break;
+
+            case Key.Left:
+                HandleLeftArrow(currentIndex);
+                break;
+        }
+    }
+
+    private void SelectRow(int targetIndex, bool isShift)
+    {
+        var targetNode = Nodes[targetIndex];
+
+        if (isShift)
+        {
+            if (_anchorIndex == -1) _anchorIndex = targetIndex;
+
+            ForestStateRegistry.ClearSelection();
+
+            int start = Math.Min(_anchorIndex, targetIndex);
+            int end = Math.Max(_anchorIndex, targetIndex);
+
+            for (int i = start; i <= end; i++)
+            {
+                ForestStateRegistry.SetSelected(Nodes[i], true);
+            }
+        }
+        else
+        {
+            ForestStateRegistry.ClearSelection();
+            ForestStateRegistry.SetSelected(targetNode, true);
+            _anchorIndex = targetIndex;
+        }
+
+        _lastSelectedNode = targetNode;
+        _host.InvalidateVisual();
+        RequestScrollIntoView?.Invoke(targetIndex);
+    }
+
+    private void HandleRightArrow(int index)
+    {
+        var node = Nodes[index];
+        if (HasChildren(node))
+        {
+            if (!ForestStateRegistry.IsExpanded(node))
+            {
+                ForestStateRegistry.SetExpanded(node, true);
+                Refresh();
+            }
+            else
+            {
+                if (index < Nodes.Length - 1) SelectRow(index + 1, false);
+            }
+        }
+    }
+
+    private void HandleLeftArrow(int index)
+    {
+        var node = Nodes[index];
+        if (HasChildren(node) && ForestStateRegistry.IsExpanded(node))
+        {
+            ForestStateRegistry.SetExpanded(node, false);
+            Refresh();
+            RequestScrollIntoView?.Invoke(index);
+        }
+        else
+        {
+            int currentLevel = Levels[index];
+            if (currentLevel > 0)
+            {
+                for (int i = index - 1; i >= 0; i--)
+                {
+                    if (Levels[i] < currentLevel)
+                    {
+                        SelectRow(i, false);
+                        return;
+                    }
+                }
             }
         }
     }
