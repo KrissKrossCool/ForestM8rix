@@ -24,9 +24,15 @@ public class ForestM8rixManager
     // --- STATE MANAGEMENT ---
     public int HoveredRowIndex { get; private set; } = -1;
     private object _lastSelectedNode = null;
-    private int _anchorIndex = -1; // [NEW] Якорь для Shift-выделения
+    private int _anchorIndex = -1;
     public Rect SelectionRect { get; private set; } = Rect.Empty;
     public bool IsRubberBandEnabled { get; set; } = true;
+
+    // Свойство для внешнего доступа (например, для SelectionData)
+    public object LastSelectedNode => _lastSelectedNode;
+
+    // Флаг защиты от рекурсии (VM -> View -> VM)
+    internal bool IsSyncingSelection { get; set; } = false;
 
     // --- SCROLL & LAYOUT ---
     public List<ForestColumn> Columns { get; } = new();
@@ -40,7 +46,7 @@ public class ForestM8rixManager
     public int[] Levels => _registry.Levels;
 
     public event EventHandler<CommandExecutedEventArgs> CommandExecuted;
-    public event Action<int> RequestScrollIntoView; // [NEW]
+    public event Action<int> RequestScrollIntoView;
 
     public ForestM8rixManager(UIElement host)
     {
@@ -51,6 +57,11 @@ public class ForestM8rixManager
 
     public void SetSource(IEnumerable source, Func<object, IEnumerable> childSelector)
     {
+
+        // 1. [NEW] Сбрасываем всё состояние старых данных
+        // Очищаем ID, битовые маски выделения/раскрытия.
+        StateManagement.ForestStateRegistry.Reset();
+
         _source = source;
         _childSelector = childSelector;
         Refresh();
@@ -78,7 +89,69 @@ public class ForestM8rixManager
 
     #endregion
 
-    #region Отрисовка (Табличный режим)
+    #region Selection Logic (Sync with VM)
+
+    // ЕДИНЫЙ МЕТОД СИНХРОНИЗАЦИИ (VM -> View)
+    // ЕДИНЫЙ МЕТОД СИНХРОНИЗАЦИИ (VM -> View)
+    public void SetSelection(object input)
+    {
+        if (IsSyncingSelection) return;
+        IsSyncingSelection = true;
+
+        ForestStateRegistry.ClearSelection();
+
+        object lastFoundNode = null;
+        int lastFoundIndex = -1;
+
+        // Получаем доступ к словарю один раз
+        var map = _registry.VisualIndexMap;
+
+        // СУТЬ: Используем универсальный хелпер EnsureEnumerable
+        foreach (var item in ForestM8rix.Infrastructure.CollectionExtensions.EnsureEnumerable(input))
+        {
+            // [NEW] Мгновенный поиск O(1) вместо линейного O(N)
+            if (map.TryGetValue(item, out int idx))
+            {
+                ForestStateRegistry.SetSelected(item, true);
+                lastFoundNode = item;
+                lastFoundIndex = idx;
+            }
+        }
+
+        // Финализация
+        if (lastFoundNode != null)
+        {
+            _lastSelectedNode = lastFoundNode;
+            _anchorIndex = lastFoundIndex;
+            RequestScrollIntoView?.Invoke(lastFoundIndex);
+        }
+        else
+        {
+            _lastSelectedNode = null;
+        }
+
+        _host.InvalidateVisual();
+        NotifySelectionUpdated();
+
+        IsSyncingSelection = false;
+    }
+
+
+    // Внутренний метод уведомления View об изменении выделения (View -> VM)
+    private void NotifySelectionUpdated()
+    {
+        if (IsSyncingSelection) return;
+
+        // "View как Оркестратор": Дергаем метод у хоста напрямую
+        if (_host is ForestM8rixView view)
+        {
+            view.OnSelectionUpdated();
+        }
+    }
+
+    #endregion
+
+    #region Отрисовка (Render)
 
     [CoreInternal]
     public void Render(DrawingContext dc, Size renderSize)
@@ -173,6 +246,7 @@ public class ForestM8rixManager
         }
         dc.Pop();
 
+        // Rubber Band
         if (IsRubberBandEnabled && !SelectionRect.IsEmpty)
         {
             var brush = new SolidColorBrush(Color.FromArgb(76, 51, 153, 255));
@@ -274,6 +348,7 @@ public class ForestM8rixManager
         }
 
         _host.InvalidateVisual();
+        NotifySelectionUpdated(); // [NEW] Уведомляем View
     }
 
     public void ClearSelectionRect()
@@ -281,6 +356,7 @@ public class ForestM8rixManager
         SelectionRect = Rect.Empty;
         _host.InvalidateVisual();
     }
+
 
     public void HandleClick(Point point)
     {
@@ -295,29 +371,35 @@ public class ForestM8rixManager
             int level = Levels[rowIndex];
 
             double indent = level * 20.0;
-            // Учет горизонтального скролла для экспандера
             double expanderX = indent + 10 - HorizontalOffset;
 
-            // Зона клика по треугольнику (чуть шире)
+            // 1. Проверяем, клик был по экспандеру?
             if (point.X >= expanderX - 5 && point.X <= expanderX + 20 && HasChildren(node))
             {
                 ForestStateRegistry.Toggle(node);
-                Refresh();
+                Refresh(); // Перестраиваем список
             }
-            else
+            else // 2. Это клик по строке (выделение)
             {
+                // 2.1. CTRL + Click (Добавить/убрать из выделения)
                 if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
                 {
                     bool currentState = ForestStateRegistry.IsSelected(node);
                     ForestStateRegistry.SetSelected(node, !currentState);
                     _lastSelectedNode = node;
-                    _anchorIndex = rowIndex;
+                    _anchorIndex = rowIndex; // Новый якорь
                 }
+                // 2.2. SHIFT + Click (Выделить диапазон)
                 else if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && _lastSelectedNode != null)
                 {
-                    // Логика Shift+Click: от якоря до клика
+                    // Ищем якорь. Если он потерялся (-1), ищем его по последнему выделенному узлу.
                     if (_anchorIndex == -1)
-                        _anchorIndex = Array.IndexOf(Nodes, _lastSelectedNode); // fallback
+                    {
+                        if (!_registry.VisualIndexMap.TryGetValue(_lastSelectedNode, out _anchorIndex))
+                        {
+                            _anchorIndex = rowIndex; // Крайний случай, если даже узел не нашли
+                        }
+                    }
 
                     ForestStateRegistry.ClearSelection();
 
@@ -326,34 +408,47 @@ public class ForestM8rixManager
 
                     for (int i = start; i <= end; i++) ForestStateRegistry.SetSelected(Nodes[i], true);
 
-                    _lastSelectedNode = node;
+                    _lastSelectedNode = node; // Курсор теперь здесь
                 }
+                // 2.3. Обычный Click (Выбрать только эту строку)
                 else
                 {
                     ForestStateRegistry.ClearSelection();
                     ForestStateRegistry.SetSelected(node, true);
                     _lastSelectedNode = node;
-                    _anchorIndex = rowIndex;
+                    _anchorIndex = rowIndex; // Новый якорь
                 }
+
                 _host.InvalidateVisual();
+                NotifySelectionUpdated(); // Уведомляем View для обновления VM
             }
         }
     }
+
+
 
     public void HandleKeyDown(Key key)
     {
         if (Nodes == null || Nodes.Length == 0) return;
 
+        // --- Обработка Ctrl+A ---
+        if (key == Key.A && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            StateManagement.ForestStateRegistry.SelectAll();
+
+            // Выбираем последний элемент как "активный"
+            _lastSelectedNode = Nodes.Length > 0 ? Nodes[Nodes.Length - 1] : null;
+            _anchorIndex = Nodes.Length > 0 ? Nodes.Length - 1 : -1;
+
+            _host.InvalidateVisual();
+            NotifySelectionUpdated();
+            return; // Выходим
+        }
+
         int currentIndex = -1;
         if (_lastSelectedNode != null)
         {
-            currentIndex = Array.IndexOf(Nodes, _lastSelectedNode);
-        }
-
-        if (currentIndex == -1)
-        {
-            SelectRow(0, false);
-            return;
+            _registry.VisualIndexMap.TryGetValue(_lastSelectedNode, out currentIndex);
         }
 
         bool isShift = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
@@ -361,24 +456,34 @@ public class ForestM8rixManager
         switch (key)
         {
             case Key.Up:
-                if (currentIndex > 0)
-                    SelectRow(currentIndex - 1, isShift);
+                if (currentIndex == -1) SelectRow(0, false);
+                else if (currentIndex > 0) SelectRow(currentIndex - 1, isShift);
                 break;
 
             case Key.Down:
-                if (currentIndex < Nodes.Length - 1)
-                    SelectRow(currentIndex + 1, isShift);
+                if (currentIndex == -1) SelectRow(0, false);
+                else if (currentIndex < Nodes.Length - 1) SelectRow(currentIndex + 1, isShift);
                 break;
 
             case Key.Right:
-                HandleRightArrow(currentIndex);
+                if (currentIndex != -1) HandleRightArrow(currentIndex);
                 break;
 
             case Key.Left:
-                HandleLeftArrow(currentIndex);
+                if (currentIndex != -1) HandleLeftArrow(currentIndex);
+                break;
+
+            // --- [NEW] Home & End ---
+            case Key.Home:
+                SelectRow(0, isShift);
+                break;
+
+            case Key.End:
+                SelectRow(Nodes.Length - 1, isShift);
                 break;
         }
     }
+
 
     private void SelectRow(int targetIndex, bool isShift)
     {
@@ -387,12 +492,9 @@ public class ForestM8rixManager
         if (isShift)
         {
             if (_anchorIndex == -1) _anchorIndex = targetIndex;
-
             ForestStateRegistry.ClearSelection();
-
             int start = Math.Min(_anchorIndex, targetIndex);
             int end = Math.Max(_anchorIndex, targetIndex);
-
             for (int i = start; i <= end; i++)
             {
                 ForestStateRegistry.SetSelected(Nodes[i], true);
@@ -408,6 +510,7 @@ public class ForestM8rixManager
         _lastSelectedNode = targetNode;
         _host.InvalidateVisual();
         RequestScrollIntoView?.Invoke(targetIndex);
+        NotifySelectionUpdated(); // [NEW] Уведомляем View
     }
 
     private void HandleRightArrow(int index)
@@ -454,6 +557,14 @@ public class ForestM8rixManager
     }
 
     #endregion
+
+    public IEnumerable<object> GetSelectedItems()
+    {
+        for (int i = 0; i < Nodes.Length; i++)
+        {
+            if (ForestStateRegistry.IsSelected(Nodes[i])) yield return Nodes[i];
+        }
+    }
 
     public bool HasChildren(object node)
     {

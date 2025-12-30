@@ -3,164 +3,236 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 
-namespace ForestM8rix
+//namespace ForestM8rix;
+
+namespace ForestM8rix222
 {
-
-    //public class ScrollData
-    //{
-    //    // Viewport - сколько строк влезает в окно
-    //    public Size Viewport;
-    //    // Extent - общее кол-во строк в BitArray
-    //    public Size Extent;
-    //    // Offset - текущий индекс верхней видимой строки
-    //    public Vector Offset;
-
-    //    public ScrollViewer ScrollOwner { get; set; }
-    //}
-
     public class ScrollData
     {
         public Vector Offset;
         public Size Extent;
         public Size Viewport;
     }
-
     public abstract class ScrollLogic : Control
+{
+    protected ScrollData _scrollData = new ScrollData();
+    private ScrollBar _verticalScrollBar;
+    private ScrollBar _horizontalScrollBar;
+
+    public double ViewportHeight => _scrollData.Viewport.Height;
+
+    public double VerticalOffset
     {
-        protected ScrollData _scrollData = new ScrollData();
-        private ScrollBar _verticalScrollBar;
-        private ScrollBar _horizontalScrollBar;
+        get => _scrollData.Offset.Y;
+        set => SetVerticalOffset(value);
+    }
 
-        public double ViewportHeight => _scrollData.Viewport.Height;
+    public double HorizontalOffset
+    {
+        get => _scrollData.Offset.X;
+        set => SetHorizontalOffset(value);
+    }
 
-        public double VerticalOffset
+    /// <summary>
+    /// Прокручивает к указанному проценту от общей высоты.
+    /// </summary>
+    /// <param name="percent">Значение от 0.0 до 100.0</param>
+    public void ScrollToPercent(double percent)
+    {
+        // Ограничиваем значение
+        percent = Math.Max(0, Math.Min(100.0, percent));
+
+        double maxOffset = Math.Max(0, _scrollData.Extent.Height - _scrollData.Viewport.Height);
+
+        // Вычисляем целевой offset
+        double targetOffset = maxOffset * (percent / 100.0);
+
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] Scrolling to {percent}%. Target Offset: {targetOffset}");
+
+        SetVerticalOffset(targetOffset);
+    }
+
+    public override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+
+        _verticalScrollBar = GetTemplateChild("PART_VerticalScrollBar") as ScrollBar;
+        if (_verticalScrollBar != null)
+            _verticalScrollBar.Scroll += (s, e) => SetVerticalOffset(e.NewValue);
+
+        _horizontalScrollBar = GetTemplateChild("PART_HorizontalScrollBar") as ScrollBar;
+        if (_horizontalScrollBar != null)
+            _horizontalScrollBar.Scroll += (s, e) => SetHorizontalOffset(e.NewValue);
+
+        UpdateLayout(); // Первый "пинок"
+        UpdateScrollMetrics();
+    }
+
+    public void SetVerticalOffset(double offset)
+    {
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] SetVerticalOffset CALLED with incoming offset: {offset:F2}");
+
+        // 1. Рассчитываем максимальное возможное смещение
+        double maxOffset = Math.Max(0, _scrollData.Extent.Height - _scrollData.Viewport.Height);
+
+        // 2. Ограничиваем запрошенное значение в допустимом диапазоне [0, maxOffset]
+        double newOffset = Math.Max(0, Math.Min(offset, maxOffset));
+
+        System.Diagnostics.Debug.WriteLine($"    -> Clamped new offset: {newOffset:F2}");
+
+        // 3. Применяем значение, только если оно действительно изменилось
+        if (Math.Abs(_scrollData.Offset.Y - newOffset) > 0.001)
         {
-            get => _scrollData.Offset.Y;
-            set => SetVerticalOffset(value);
-        }
+            _scrollData.Offset.Y = newOffset;
+            System.Diagnostics.Debug.WriteLine($"    -> SUCCESS: _scrollData.Offset.Y is now {_scrollData.Offset.Y:F2}");
 
-        public double HorizontalOffset
-        {
-            get => _scrollData.Offset.X;
-            set => SetHorizontalOffset(value);
-        }
-
-        public override void OnApplyTemplate()
-        {
-            base.OnApplyTemplate();
-
-            _verticalScrollBar = GetTemplateChild("PART_VerticalScrollBar") as ScrollBar;
+            // 4. Синхронизируем UI
             if (_verticalScrollBar != null)
             {
-                _verticalScrollBar.Scroll += (s, e) => SetVerticalOffset(e.NewValue);
+                _verticalScrollBar.Value = newOffset;
             }
 
-            _horizontalScrollBar = GetTemplateChild("PART_HorizontalScrollBar") as ScrollBar;
-            if (_horizontalScrollBar != null)
-            {
-                _horizontalScrollBar.Scroll += (s, e) => SetHorizontalOffset(e.NewValue);
-            }
+            // 5. Принудительно обновляем макет, чтобы UI (включая ScrollBar) немедленно отреагировал
+            //UpdateLayout();
+            InvalidateVisual();
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"    -> SKIPPED: Value did not change enough. Current: {_scrollData.Offset.Y:F2}");
+        }
+    }
 
-            UpdateScrollMetrics();
+
+    public void SetHorizontalOffset(double offset)
+    {
+        double max = Math.Max(0, _scrollData.Extent.Width - _scrollData.Viewport.Width);
+        offset = Math.Max(0, Math.Min(offset, max));
+
+        if (Math.Abs(_scrollData.Offset.X - offset) < 0.001) return;
+
+        _scrollData.Offset.X = offset;
+        if (_horizontalScrollBar != null) _horizontalScrollBar.Value = offset;
+
+        UpdateLayout();
+        InvalidateVisual();
+    }
+
+    protected override void OnPreviewMouseWheel(MouseWheelEventArgs e)
+    {
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            double delta = (e.Delta / 120.0) * 30;
+            SetHorizontalOffset(HorizontalOffset - delta);
+        }
+        else
+        {
+            double delta = (e.Delta / 120.0) * 3;
+            SetVerticalOffset(VerticalOffset - delta);
+        }
+        e.Handled = true;
+        base.OnPreviewMouseWheel(e);
+    }
+
+    protected void UpdateScrollMetrics()
+    {
+        if (_verticalScrollBar != null)
+        {
+            double maxV = Math.Max(0, _scrollData.Extent.Height - _scrollData.Viewport.Height);
+            if (Math.Abs(_verticalScrollBar.Maximum - maxV) > 0.01) _verticalScrollBar.Maximum = maxV;
+            if (Math.Abs(_verticalScrollBar.ViewportSize - _scrollData.Viewport.Height) > 0.01) _verticalScrollBar.ViewportSize = _scrollData.Viewport.Height;
+
+            var newVisibility = maxV > 0 ? Visibility.Visible : Visibility.Collapsed;
+            if (_verticalScrollBar.Visibility != newVisibility) _verticalScrollBar.Visibility = newVisibility;
+        }
+
+        if (_horizontalScrollBar != null)
+        {
+            double maxH = Math.Max(0, _scrollData.Extent.Width - _scrollData.Viewport.Width);
+            if (Math.Abs(_horizontalScrollBar.Maximum - maxH) > 0.01) _horizontalScrollBar.Maximum = maxH;
+            if (Math.Abs(_horizontalScrollBar.ViewportSize - _scrollData.Viewport.Width) > 0.01) _horizontalScrollBar.ViewportSize = _scrollData.Viewport.Width;
+
+            var newVisibility = maxH > 0 ? Visibility.Visible : Visibility.Collapsed;
+            if (_horizontalScrollBar.Visibility != newVisibility) _horizontalScrollBar.Visibility = newVisibility;
+        }
+    }
+}
+
+}
+
+namespace ForestM8rix
+{
+    public class ScrollData
+    {
+        public ScrollViewer ScrollOwner;
+        public Vector Offset;
+        public Size Extent;
+        public Size Viewport;
+    }
+
+    public abstract class ScrollLogic : Control, IScrollInfo
+    {
+        protected ScrollData _scrollData = new ScrollData();
+
+        public bool CanVerticallyScroll { get; set; } = true;
+        public bool CanHorizontallyScroll { get; set; } = true;
+
+        public double ExtentHeight => _scrollData.Extent.Height;
+        public double ViewportHeight => _scrollData.Viewport.Height;
+        public double VerticalOffset => _scrollData.Offset.Y;
+
+        public double ExtentWidth => _scrollData.Extent.Width;
+        public double ViewportWidth => _scrollData.Viewport.Width;
+        public double HorizontalOffset => _scrollData.Offset.X;
+
+        public ScrollViewer ScrollOwner
+        {
+            get => _scrollData.ScrollOwner;
+            set => _scrollData.ScrollOwner = value;
         }
 
         public void SetVerticalOffset(double offset)
         {
-            double max = Math.Max(0, _scrollData.Extent.Height - _scrollData.Viewport.Height);
-            offset = Math.Max(0, Math.Min(offset, max));
+            double maxOffset = Math.Max(0, ExtentHeight - ViewportHeight);
+            offset = Math.Max(0, Math.Min(offset, maxOffset));
 
             if (Math.Abs(_scrollData.Offset.Y - offset) > 0.001)
             {
                 _scrollData.Offset.Y = offset;
-                if (_verticalScrollBar != null && Math.Abs(_verticalScrollBar.Value - offset) > 0.001)
-                    _verticalScrollBar.Value = offset;
-
+                ScrollOwner?.InvalidateScrollInfo();
                 InvalidateVisual();
             }
         }
 
         public void SetHorizontalOffset(double offset)
         {
-            double max = Math.Max(0, _scrollData.Extent.Width - _scrollData.Viewport.Width);
-            offset = Math.Max(0, Math.Min(offset, max));
+            double maxOffset = Math.Max(0, ExtentWidth - ViewportWidth);
+            offset = Math.Max(0, Math.Min(offset, maxOffset));
 
             if (Math.Abs(_scrollData.Offset.X - offset) > 0.001)
             {
                 _scrollData.Offset.X = offset;
-                if (_horizontalScrollBar != null && Math.Abs(_horizontalScrollBar.Value - offset) > 0.001)
-                    _horizontalScrollBar.Value = offset;
-
+                ScrollOwner?.InvalidateScrollInfo();
                 InvalidateVisual();
             }
         }
 
-        protected override void OnPreviewMouseWheel(MouseWheelEventArgs e)
-        {
-            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
-            {
-                // Shift + Wheel -> Horizontal Scroll
-                double delta = (e.Delta / 120.0) * 30; // 30px per notch
-                SetHorizontalOffset(HorizontalOffset - delta);
-                e.Handled = true;
-            }
-            else
-            {
-                // Wheel -> Vertical Scroll
-                double delta = (e.Delta / 120.0) * 3; // 3 lines per notch
-                SetVerticalOffset(VerticalOffset - delta);
-                e.Handled = true;
-            }
-            base.OnPreviewMouseWheel(e);
-        }
+        public void LineUp() => SetVerticalOffset(VerticalOffset - 1);
+        public void LineDown() => SetVerticalOffset(VerticalOffset + 1);
+        public void PageUp() => SetVerticalOffset(VerticalOffset - ViewportHeight);
+        public void PageDown() => SetVerticalOffset(VerticalOffset + ViewportHeight);
+        public void MouseWheelUp() => SetVerticalOffset(VerticalOffset - SystemParameters.WheelScrollLines);
+        public void MouseWheelDown() => SetVerticalOffset(VerticalOffset + SystemParameters.WheelScrollLines);
 
-        // Обновить метод UpdateScrollMetrics
-        protected void UpdateScrollMetrics()
-        {
-            // Получаем настройки видимости, заданные в XAML на самом контроле
-            var vertVis = ScrollViewer.GetVerticalScrollBarVisibility(this);
-            var horzVis = ScrollViewer.GetHorizontalScrollBarVisibility(this);
+        public void LineLeft() => SetHorizontalOffset(HorizontalOffset - 10);
+        public void LineRight() => SetHorizontalOffset(HorizontalOffset + 10);
+        public void PageLeft() => SetHorizontalOffset(HorizontalOffset - ViewportWidth);
+        public void PageRight() => SetHorizontalOffset(HorizontalOffset + ViewportWidth);
+        public void MouseWheelLeft() => SetHorizontalOffset(HorizontalOffset - 30);
+        public void MouseWheelRight() => SetHorizontalOffset(HorizontalOffset + 30);
 
-            // 1. VERTICAL
-            if (_verticalScrollBar != null)
-            {
-                double maxV = Math.Max(0, _scrollData.Extent.Height - _scrollData.Viewport.Height);
-                _verticalScrollBar.Maximum = maxV;
-                _verticalScrollBar.ViewportSize = _scrollData.Viewport.Height;
-                _verticalScrollBar.Value = _scrollData.Offset.Y;
-
-                // Логика видимости:
-                // Visible -> Всегда показывать (даже если неактивен)
-                // Hidden -> Всегда скрывать
-                // Auto -> Показывать, если нужен
-                // Disabled -> Скрывать и запрещать (можно доработать, пока как Hidden)
-
-                if (vertVis == ScrollBarVisibility.Visible)
-                    _verticalScrollBar.Visibility = Visibility.Visible;
-                else if (vertVis == ScrollBarVisibility.Hidden || vertVis == ScrollBarVisibility.Disabled)
-                    _verticalScrollBar.Visibility = Visibility.Collapsed;
-                else // Auto
-                    _verticalScrollBar.Visibility = maxV > 0 ? Visibility.Visible : Visibility.Collapsed;
-
-                // Если Disabled, можно блокировать SetVerticalOffset, но это опционально
-            }
-
-            // 2. HORIZONTAL
-            if (_horizontalScrollBar != null)
-            {
-                double maxH = Math.Max(0, _scrollData.Extent.Width - _scrollData.Viewport.Width);
-                _horizontalScrollBar.Maximum = maxH;
-                _horizontalScrollBar.ViewportSize = _scrollData.Viewport.Width;
-                _horizontalScrollBar.Value = _scrollData.Offset.X;
-
-                if (horzVis == ScrollBarVisibility.Visible)
-                    _horizontalScrollBar.Visibility = Visibility.Visible;
-                else if (horzVis == ScrollBarVisibility.Hidden || horzVis == ScrollBarVisibility.Disabled)
-                    _horizontalScrollBar.Visibility = Visibility.Collapsed;
-                else // Auto
-                    _horizontalScrollBar.Visibility = maxH > 0 ? Visibility.Visible : Visibility.Collapsed;
-            }
-        }
-
+        public Rect MakeVisible(Visual visual, Rect rectangle) => Rect.Empty;
     }
 }
+
