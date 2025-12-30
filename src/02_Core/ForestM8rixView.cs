@@ -114,16 +114,25 @@ namespace ForestM8rix
             UpdateScrollMetrics();
         }
 
+
         private void UpdateScrollMetrics()
         {
             _scrollData.Extent.Height = _manager.Count;
-            _scrollData.Viewport.Height = Math.Floor(ActualHeight / RowHeight);
-            ScrollOwner?.InvalidateScrollInfo();
+            if (RowHeight > 0)
+                _scrollData.Viewport.Height = Math.Floor(ActualHeight / RowHeight);
+
+            // [NEW] Горизонтальные метрики
+            _scrollData.Extent.Width = _manager.TotalWidth;
+            _scrollData.Viewport.Width = ActualWidth;
+
+            base.UpdateScrollMetrics();
         }
+
 
         protected override void OnRender(DrawingContext dc)
         {
             _manager.VerticalOffset = this.VerticalOffset;
+            _manager.HorizontalOffset = this.HorizontalOffset;
             _manager.Render(dc, new Size(ActualWidth, ActualHeight));
         }
     }

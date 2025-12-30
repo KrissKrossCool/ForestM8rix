@@ -250,6 +250,12 @@ public class ForestM8rixManager
     // Настройка управление вкл/выкл - возможности выбора рамкой
     public bool IsRubberBandEnabled { get; set; } = true;
 
+    public double HorizontalOffset { get; set; } = 0;
+
+    // Вычисляемое свойство общей ширины
+    public double TotalWidth => Columns.Sum(c => c.Width);
+
+
     private readonly NodeRegistry _registry = new();
     private readonly UIElement _host;
     private IEnumerable _source;
@@ -312,45 +318,50 @@ public class ForestM8rixManager
 
     #region Отрисовка (Табличный режим)
 
+    // Заменяем метод Render
     [CoreInternal]
     public void Render(DrawingContext dc, Size renderSize)
     {
-        // [ДАТЧИК] Если данных нет вообще
-        if (Nodes == null || Nodes.Length == 0)
-        {
-            DrawErrorText(dc, "НЕТ ДАННЫХ (Nodes is null)", Brushes.Yellow, 50);
-            return;
-        }
-
-        // [ДАТЧИК] Если колонки не настроены
-        if (Columns.Count == 0)
-        {
-            DrawErrorText(dc, "КОЛОНКИ НЕ НАСТРОЕНЫ", Brushes.Orange, 80);
-            return;
-        }
+        if (Nodes == null || Nodes.Length == 0) return;
+        if (Columns.Count == 0) return;
 
         double headerHeight = 30;
         double dpi = VisualTreeHelper.GetDpi(_host).PixelsPerDip;
         Typeface typeface = new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
         Pen gridPen = new Pen(Brushes.LightGray, 0.5);
 
-        // 1. ОТРИСОВКА ШАПКИ
+        // === 1. ОТРИСОВКА ШАПКИ ===
+        // Рисуем фон шапки поверх всего
         dc.DrawRectangle(Brushes.WhiteSmoke, null, new Rect(0, 0, renderSize.Width, headerHeight));
 
-        double colX = 0;
+        // СУТЬ: Начальная позиция X сдвинута на величину скролла
+        double colX = -HorizontalOffset;
+
+        // Clip для шапки, чтобы текст не вылезал влево при скролле
+        dc.PushClip(new RectangleGeometry(new Rect(0, 0, renderSize.Width, headerHeight)));
+
         foreach (var col in Columns)
         {
-            var headFt = new FormattedText(col.Header, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                new Typeface(typeface.FontFamily, FontStyles.Normal, FontWeights.Bold, FontStretches.Normal), 12, Brushes.DimGray, dpi);
+            // Оптимизация: не рисуем то, что ушло влево или еще не вышло справа
+            if (colX + col.Width > 0 && colX < renderSize.Width)
+            {
+                var headFt = new FormattedText(col.Header, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface(typeface.FontFamily, FontStyles.Normal, FontWeights.Bold, FontStretches.Normal), 12, Brushes.DimGray, dpi);
 
-            dc.DrawText(headFt, new Point(colX + 5, (headerHeight - headFt.Height) / 2));
+                dc.DrawText(headFt, new Point(colX + 5, (headerHeight - headFt.Height) / 2));
+                dc.DrawLine(gridPen, new Point(colX + col.Width, 0), new Point(colX + col.Width, headerHeight));
+            }
             colX += col.Width;
-            dc.DrawLine(gridPen, new Point(colX, 0), new Point(colX, renderSize.Height));
         }
+        dc.Pop(); // Снимаем клип шапки
+
         dc.DrawLine(gridPen, new Point(0, headerHeight), new Point(renderSize.Width, headerHeight));
 
-        // 2. ОТРИСОВКА СТРОК
+        // === 2. ОТРИСОВКА СТРОК ===
         double currentY = headerHeight - (VerticalOffset * RowHeight);
+
+        // Клип для области данных (чтобы строки не рисовали поверх шапки)
+        dc.PushClip(new RectangleGeometry(new Rect(0, headerHeight, renderSize.Width, renderSize.Height - headerHeight)));
 
         for (int i = 0; i < Nodes.Length; i++)
         {
@@ -359,62 +370,66 @@ public class ForestM8rixManager
 
             object node = Nodes[i];
 
-            // --- DRAW BACKGROUNDS (Selection & Hover) ---
-            bool isSelected = ForestStateRegistry.IsSelected(node);
+            // Фон (Selection/Hover) рисуем на всю ширину (независимо от скролла)
+            bool isSelected = StateManagement.ForestStateRegistry.IsSelected(node);
+            bool isHovered = (i == HoveredRowIndex); // Предполагаем, что свойство доступно
 
-            if (isSelected)
-            {
-                dc.DrawRectangle(Brushes.LightSkyBlue, null, new Rect(0, currentY, renderSize.Width, RowHeight));
-            }
-            else if (i == HoveredRowIndex)
-            {
-                dc.DrawRectangle(Brushes.AliceBlue, null, new Rect(0, currentY, renderSize.Width, RowHeight));
-            }
-            // --------------------------------------------
+            if (isSelected) dc.DrawRectangle(Brushes.LightSkyBlue, null, new Rect(0, currentY, renderSize.Width, RowHeight));
+            else if (isHovered) dc.DrawRectangle(Brushes.AliceBlue, null, new Rect(0, currentY, renderSize.Width, RowHeight));
 
+            // СУТЬ: Сброс X для каждой строки с учетом скролла
+            double cellX = -HorizontalOffset;
             int level = Levels[i];
-            double cellX = 0;
 
             dc.DrawLine(gridPen, new Point(0, currentY + RowHeight), new Point(renderSize.Width, currentY + RowHeight));
 
             for (int c = 0; c < Columns.Count; c++)
             {
                 var col = Columns[c];
-                double textX = cellX + 5;
 
-                if (c == 0) // Первая колонка (Дерево)
+                // Оптимизация по горизонтали
+                if (cellX + col.Width > 0 && cellX < renderSize.Width)
                 {
-                    double indent = level * 20.0;
-                    if (HasChildren(node))
+                    double textX = cellX + 5;
+
+                    if (c == 0) // Дерево
                     {
-                        bool isExp = ForestStateRegistry.IsExpanded(node);
-                        DrawExpander(dc, new Point(cellX + indent + 10, currentY + RowHeight / 2), isExp);
+                        double indent = level * 20.0;
+                        if (HasChildren(node))
+                        {
+                            bool isExp = StateManagement.ForestStateRegistry.IsExpanded(node);
+                            DrawExpander(dc, new Point(cellX + indent + 10, currentY + RowHeight / 2), isExp);
+                        }
+                        textX = cellX + indent + 25;
                     }
-                    textX = cellX + indent + 25;
+
+                    string text = col.CellTextSelector?.Invoke(node) ?? "";
+                    var ft = new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, 12, Brushes.Black, dpi);
+
+                    // Клип ячейки
+                    dc.PushClip(new RectangleGeometry(new Rect(cellX, currentY, col.Width, RowHeight)));
+                    dc.DrawText(ft, new Point(textX, currentY + (RowHeight - ft.Height) / 2));
+                    dc.Pop();
                 }
-
-                string text = col.CellTextSelector?.Invoke(node) ?? "null";
-                var ft = new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, 12, Brushes.Black, dpi);
-
-                // Clipping для текста, чтобы не вылезал за ячейку
-                dc.PushClip(new RectangleGeometry(new Rect(cellX, currentY, col.Width, RowHeight)));
-                dc.DrawText(ft, new Point(textX, currentY + (RowHeight - ft.Height) / 2));
-                dc.Pop();
-
                 cellX += col.Width;
             }
-
             currentY += RowHeight;
         }
+        dc.Pop(); // Снимаем клип данных
 
-        // --- DRAW RUBBER BAND (Selection Rect) ---
-        if (!SelectionRect.IsEmpty)
+        // Отрисовка рамки (RubberBand)
+        if (IsRubberBandEnabled && !SelectionRect.IsEmpty)
         {
-            var brush = new SolidColorBrush(Color.FromArgb(76, 51, 153, 255)); // Semi-transparent Blue
+            // Рамку рисуем поверх, с учетом смещения или без?
+            // Обычно рамка привязана к экрану, координаты мыши уже экранные.
+            // Оставляем как есть.
+            var brush = new SolidColorBrush(Color.FromArgb(76, 51, 153, 255));
             var border = new Pen(Brushes.RoyalBlue, 1);
             dc.DrawRectangle(brush, border, SelectionRect);
         }
     }
+
+
 
     private void DrawErrorText(DrawingContext dc, string text, Brush color, double y)
     {

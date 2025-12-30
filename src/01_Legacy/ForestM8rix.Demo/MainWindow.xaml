@@ -10,8 +10,14 @@
     <Grid Background="Green">
         <!--<ScrollViewer x:Name="MainScroll" HorizontalScrollBarVisibility="Auto">
         </ScrollViewer>-->
-            <m8:ForestM8rixView x:Name="ForestDisplay"                                    
-                                          m8:ForestM8rixOptions.IsRubberBandEnabled="True"      
+        <!--<ScrollViewer CanContentScroll="True"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto">-->
+            <m8:ForestM8rixView x:Name="ForestDisplay"   
+                                ScrollViewer.HorizontalScrollBarVisibility="Auto"       
+                                ScrollViewer.VerticalScrollBarVisibility="Auto"                       
+                                m8:ForestM8rixOptions.IsRubberBandEnabled="True"      
                                 />
+        <!--</ScrollViewer>-->
     </Grid>
 </Window>

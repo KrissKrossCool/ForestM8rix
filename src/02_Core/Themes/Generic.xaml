@@ -10,11 +10,37 @@
                     <Border Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}">
-                        <ScrollViewer x:Name="PART_ScrollViewer" 
-                                    VerticalScrollBarVisibility="Auto"
-                                    HorizontalScrollBarVisibility="Auto">
-                            <Canvas Background="Transparent" />
-                        </ScrollViewer>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <ContentPresenter Grid.Column="0" Grid.Row="0" />
+
+                            <ScrollBar x:Name="PART_VerticalScrollBar"
+                                       Grid.Column="1" Grid.Row="0"
+                                       Orientation="Vertical"
+                                       Minimum="0"
+                                       SmallChange="1"
+                                       LargeChange="10"
+                                       Visibility="Collapsed"/>
+
+                            <ScrollBar x:Name="PART_HorizontalScrollBar"
+                                       Grid.Column="0" Grid.Row="1"
+                                       Orientation="Horizontal"
+                                       Minimum="0"
+                                       SmallChange="10"
+                                       LargeChange="50"
+                                       Visibility="Collapsed"/>
+
+                            <Rectangle Grid.Column="1" Grid.Row="1" Fill="{TemplateBinding Background}"/>
+                        </Grid>
                     </Border>
                 </ControlTemplate>
             </Setter.Value>
