@@ -1,12 +1,17 @@
 ﻿using System;
 using System.Collections;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace ForestM8rix
 {
+    // [СУТЬ] 3. Главный контрол (Директор)
+    [TemplatePart(Name = "PART_HorizontalHost", Type = typeof(ScrollViewer))]
+    [TemplatePart(Name = "PART_VerticalHost", Type = typeof(ScrollViewer))]
+    [TemplatePart(Name = "PART_Canvas", Type = typeof(ForestM8rixCanvas))]
     public class ForestM8rixView : ScrollLogic
     {
         public ForestM8rixManager Manager => _manager;
@@ -20,6 +25,16 @@ namespace ForestM8rix
         {
             DefaultStyleKeyProperty.OverrideMetadata(typeof(ForestM8rixView),
                 new FrameworkPropertyMetadata(typeof(ForestM8rixView)));
+        }
+
+        // [СУТЬ] Регистрация свойства для XAML
+        public static readonly DependencyProperty HeaderHeightProperty =
+            DependencyProperty.Register(nameof(HeaderHeight), typeof(double), typeof(ForestM8rixView), new PropertyMetadata(30.0));
+
+        public double HeaderHeight
+        {
+            get => (double)GetValue(HeaderHeightProperty);
+            set => SetValue(HeaderHeightProperty, value);
         }
 
         public ForestM8rixView()
