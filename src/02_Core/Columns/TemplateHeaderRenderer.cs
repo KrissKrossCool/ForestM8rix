@@ -5,10 +5,14 @@ namespace ForestM8rix.Columns
 {
     public class TemplateHeaderRenderer : IHeaderRenderer
     {
+        private readonly DataTemplate _template;
+        private readonly FrameworkElement _host;
         private readonly ForestM8rixColumn _column;
 
-        public TemplateHeaderRenderer(ForestM8rixColumn column)
+        public TemplateHeaderRenderer(DataTemplate template, FrameworkElement host, ForestM8rixColumn column)
         {
+        _template = template;
+    _host = host;
             _column = column;
         }
 

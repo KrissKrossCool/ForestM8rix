@@ -1,10 +1,10 @@
 ﻿using System.Windows;
 using System.Windows.Media;
 
-namespace ForestM8rix.Columns
+namespace ForestM8rix.Columns;
+
+public interface IHeaderRenderer
 {
-    public interface IHeaderRenderer
-    {
-        void Draw(DrawingContext dc, Rect rect);
-    }
+    void Draw(DrawingContext dc, Rect rect);
 }
+

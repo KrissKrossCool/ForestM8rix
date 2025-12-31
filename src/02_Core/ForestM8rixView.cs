@@ -1,292 +1,129 @@
-﻿using System;
-using System.Collections;
+﻿// [ПОЛНЫЙ]
+using ForestM8rix.Core;
+using ForestM8rix.Rendering;
+using ForestM8rix.StateManagement;
+using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
 
 namespace ForestM8rix
 {
-    // [СУТЬ] 3. Главный контрол (Директор)
-    [TemplatePart(Name = "PART_HorizontalHost", Type = typeof(ScrollViewer))]
-    [TemplatePart(Name = "PART_VerticalHost", Type = typeof(ScrollViewer))]
-    [TemplatePart(Name = "PART_Canvas", Type = typeof(ForestM8rixCanvas))]
-    public class ForestM8rixView : ScrollLogic
+    [TemplatePart(Name = "PART_ScrollViewer", Type = typeof(ScrollViewer))]
+    [TemplatePart(Name = "PART_Canvas", Type = typeof(Canvas))]
+    [TemplatePart(Name = "PART_Header", Type = typeof(ForestM8rixHeader))]
+    public partial class ForestM8rixView : Control
     {
-        public ForestM8rixManager Manager => _manager;
+        private ScrollViewer _scrollViewer;
+        private ForestCanvas _internalCanvas;
         private readonly ForestM8rixManager _manager;
-        public double RowHeight => _manager.RowHeight;
 
-        private Point _dragStartPoint;
-        private bool _isDraggingSelection;
+        public ForestM8rixManager Manager => _manager;
 
-        static ForestM8rixView()
-        {
-            DefaultStyleKeyProperty.OverrideMetadata(typeof(ForestM8rixView),
-                new FrameworkPropertyMetadata(typeof(ForestM8rixView)));
-        }
-
-        // [СУТЬ] Регистрация свойства для XAML
-        public static readonly DependencyProperty HeaderHeightProperty =
-            DependencyProperty.Register(nameof(HeaderHeight), typeof(double), typeof(ForestM8rixView), new PropertyMetadata(30.0));
-
-        public double HeaderHeight
-        {
-            get => (double)GetValue(HeaderHeightProperty);
-            set => SetValue(HeaderHeightProperty, value);
-        }
-
-        public ForestM8rixView()
-        {
-            _manager = new ForestM8rixManager(this);
-
-            System.Diagnostics.Debug.WriteLine("--> [CONSTRUCTOR] ForestM8rixView created.");
-
-            this.Background = Brushes.Transparent;
-            this.Focusable = true;
-            _manager.RequestScrollIntoView += ScrollRowIntoView;
-        }
-
-        // --- ИСХОДЯЩАЯ СИНХРОНИЗАЦИЯ (VIEW -> VM) ---
-        public void OnSelectionUpdated()
-        {
-            SelectionData.SetOneItem(this, _manager.LastSelectedNode);
-            //var list = SelectionData.GetList(this);
-            //if (list != null && !list.IsReadOnly)
-            //{
-            //    try
-            //    {
-            //        list.Clear();
-            //        foreach (var item in _manager.GetSelectedItems()) list.Add(item);
-            //    }
-            //    catch { /* Игнорируем */ }
-            //}
-        }
-
-        // ЗАМЕНИТЬ OnPreviewKeyDown
-        protected override void OnPreviewKeyDown(KeyEventArgs e)
-        {
-            switch (e.Key)
-            {
-                // ВСЕ клавиши навигации/выделения идут в Менеджер
-                case Key.Up:
-                case Key.Down:
-                case Key.Left:
-                case Key.Right:
-                case Key.Home:
-                case Key.End:
-                case Key.A when Keyboard.Modifiers.HasFlag(ModifierKeys.Control):
-                    _manager.HandleKeyDown(e.Key);
-                    e.Handled = true;
-                    break;
-
-                // PageUp/Down - это чистый скролл, пусть IScrollInfo работает
-                case Key.PageUp:
-                    PageUp();
-                    e.Handled = true;
-                    break;
-                case Key.PageDown:
-                    PageDown();
-                    e.Handled = true;
-                    break;
-            }
-        }
-
-
-
-        // ЗАМЕНИТЬ UpdateScrollMetrics
-        private void UpdateScrollMetrics()
-        {
-            _scrollData.Extent.Height = _manager.Count;
-            _scrollData.Viewport.Height = (RowHeight > 0) ? Math.Floor(ActualHeight / RowHeight) : 0;
-            _scrollData.Extent.Width = _manager.TotalWidth;
-            _scrollData.Viewport.Width = ActualWidth;
-
-            // Просто сообщаем "хозяину", что цифры поменялись
-            ScrollOwner?.InvalidateScrollInfo();
-        }
-
-
-        // ЗАМЕНИТЬ ScrollRowIntoView
-        private void ScrollRowIntoView(int rowIndex)
-        {
-            if (RowHeight < double.Epsilon || ActualHeight < double.Epsilon) return;
-
-            double viewportHeightInRows = ViewportHeight;
-            if (viewportHeightInRows < 1) viewportHeightInRows = 1;
-
-            // Если строка выше видимой области
-            if (rowIndex < VerticalOffset)
-            {
-                SetVerticalOffset(rowIndex);
-            }
-            // [FIX] Если строка ниже или равна последней видимой
-            else if (rowIndex >= VerticalOffset + viewportHeightInRows)
-            {
-                SetVerticalOffset(rowIndex - viewportHeightInRows + 1);
-            }
-        }
-
-
-
-        // --- ВВОД: МЫШЬ (без изменений) ---
-        //protected override void OnPreviewMouseDown(MouseButtonEventArgs e)
+        // Конструктор
+        //public ForestM8rixView()
         //{
-        //    base.OnPreviewMouseDown(e);
-        //    if (e.ChangedButton == MouseButton.Left)
-        //    {
-        //        this.Focus();
-        //        _manager.VerticalOffset = this.VerticalOffset;
-        //        _manager.HorizontalOffset = this.HorizontalOffset;
-        //        Point p = e.GetPosition(this);
-        //        _dragStartPoint = p;
-        //        _isDraggingSelection = false;
-        //        _manager.HandleClick(p);
-        //        CaptureMouse();
-        //    }
+        //    // Передаем this, чтобы менеджер мог брать настройки (Font, DPI)
+        //    _manager = new ForestM8rixManager(this);
         //}
 
-        protected override void OnPreviewMouseDown(MouseButtonEventArgs e)
+        public override void OnApplyTemplate()
         {
-            base.OnPreviewMouseDown(e);
+            base.OnApplyTemplate();
 
-            // 1. Агрессивно забираем фокус на себя
-            if (this.Focusable && !this.IsFocused)
+            _scrollViewer = GetTemplateChild("PART_ScrollViewer") as ScrollViewer;
+
+            // 1. [TAG] Настройка заголовка
+            if (GetTemplateChild("PART_Header") is ForestM8rixHeader header)
             {
-                this.Focus();
+                // Привязываем колонки напрямую из нашего менеджера
+                header.Columns = _manager.Columns;
+                header.InvalidateVisual();
             }
 
-            if (e.ChangedButton == MouseButton.Left)
+            // 2. [TAG] Подмена холста
+            if (GetTemplateChild("PART_Canvas") is Canvas placeholder)
             {
-                // Синхронизация
-                _manager.VerticalOffset = this.VerticalOffset;
-                _manager.HorizontalOffset = this.HorizontalOffset;
+                _internalCanvas = new ForestCanvas
+                {
+                    OwnerManager = _manager,
+                    Background = Brushes.Transparent // Критично для регистрации мыши
+                };
 
-                Point p = e.GetPosition(this);
-                _dragStartPoint = p;
-                _isDraggingSelection = false;
-
-                _manager.HandleClick(p);
-
-                // Захват мыши для драга
-                CaptureMouse();
-
-                // 2. [FIX] Говорим системе, что мы обработали клик.
-                // Фокус останется здесь, и OnPreviewKeyDown будет работать.
-                e.Handled = true;
+                if (_scrollViewer != null)
+                    _scrollViewer.Content = _internalCanvas;
             }
+
+            // 3. [TAG] Синхронизация скролла
+            if (_scrollViewer != null)
+            {
+                _scrollViewer.ScrollChanged += (s, e) =>
+                {
+                    // Обновляем оффсеты в менеджере для правильного клика
+                    _manager.VerticalOffset = e.VerticalOffset / (_manager.RowHeight * _manager.Scale);
+                    _manager.HorizontalOffset = e.HorizontalOffset;
+
+                    // Синхронизируем заголовок (чтобы не уплывал при горизонтальном скролле)
+                    if (GetTemplateChild("PART_Header") is ForestM8rixHeader h)
+                    {
+                        h.HorizontalOffset = e.HorizontalOffset;
+                        h.InvalidateVisual();
+                    }
+
+                    _internalCanvas?.InvalidateVisual();
+                };
+            }
+
+            if (_internalCanvas != null)
+                _internalCanvas.MouseDown += OnCanvasMouseDown;
         }
 
-
-        // ... (OnMouseMove, OnMouseUp, OnMouseLeave без изменений) ...
-        protected override void OnMouseMove(MouseEventArgs e)
+        private void OnCanvasMouseDown(object sender, MouseButtonEventArgs e)
         {
-            _manager.VerticalOffset = this.VerticalOffset;
-            _manager.HorizontalOffset = this.HorizontalOffset;
-            if (IsMouseCaptured && e.LeftButton == MouseButtonState.Pressed)
+            Point pos = e.GetPosition(_internalCanvas);
+            double sRowH = _manager.RowHeight * _manager.Scale;
+
+            // Индекс строки с учетом виртуализации/смещения
+            int rowIdx = (int)(pos.Y / sRowH);
+
+            if (rowIdx >= 0 && rowIdx < _manager.Nodes.Length)
             {
-                Point current = e.GetPosition(this);
-                Vector diff = _dragStartPoint - current;
-                if (Math.Abs(diff.X) > 5 || Math.Abs(diff.Y) > 5)
+                object node = _manager.Nodes[rowIdx];
+                int level = _manager.Levels[rowIdx];
+
+                // Область экспандера (X)
+                double indentX = level * _manager.IndentSize * _manager.Scale;
+                double expanderClickArea = 20 * _manager.Scale;
+
+                if (pos.X >= indentX && pos.X <= indentX + expanderClickArea)
                 {
-                    if (_manager.IsRubberBandEnabled)
-                    {
-                        _isDraggingSelection = true;
-                        _manager.UpdateSelectionRect(_dragStartPoint, current);
-                    }
+                    // Логика Toggle (Ваш подход)
+                    bool isNowExpanded = !ForestStateRegistry.IsExpanded(node);
+                    ForestStateRegistry.SetExpanded(node, isNowExpanded);
+
+                    _manager.RefreshFlatList(); // Пересобираем дерево
+                    UpdateLayout(); // Обновляем размеры ScrollViewer (ExtentHeight)
+                }
+                else
+                {
+                    // Обычный выбор строки
+                    _manager.OnCanvasMouseDown(pos, Keyboard.Modifiers.HasFlag(ModifierKeys.Control), Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
                 }
             }
-            else
+        }
+
+        // [СУТЬ] Изолированный рендерер
+        private class ForestCanvas : Canvas
+        {
+            public ForestM8rixManager OwnerManager { get; set; }
+
+            protected override void OnRender(DrawingContext dc)
             {
-                base.OnMouseMove(e);
-                _manager.HandleMouseMove(e.GetPosition(this));
+                // Используем RenderManager для отрисовки всего дерева
+                OwnerManager?.RenderAll(dc, RenderSize);
             }
-        }
-        protected override void OnMouseUp(MouseButtonEventArgs e)
-        {
-            if (IsMouseCaptured) ReleaseMouseCapture();
-            if (_isDraggingSelection)
-            {
-                _manager.ClearSelectionRect();
-                _isDraggingSelection = false;
-            }
-            base.OnMouseUp(e);
-        }
-        protected override void OnMouseLeave(MouseEventArgs e)
-        {
-            base.OnMouseLeave(e);
-            if (!IsMouseCaptured) _manager.HandleMouseLeave();
-        }
-
-        // --- SCROLL & RENDER LOGIC ---
-
-        //private void ScrollRowIntoView(int rowIndex)
-        //{
-        //    // Безопасность
-        //    if (RowHeight < double.Epsilon || ActualHeight < double.Epsilon) return;
-
-        //    // [FIX] Переходим на более простую логику.
-        //    // ViewportHeight из базового класса должен быть доступен, если там public
-        //    double viewportHeightInRows = _scrollData.Viewport.Height;
-
-        //    // Если целевая строка выше текущей видимой области
-        //    if (rowIndex < VerticalOffset)
-        //    {
-        //        // Ставим её на самый верх
-        //        SetVerticalOffset(rowIndex);
-        //    }
-        //    // Если целевая строка ниже текущей видимой области
-        //    // (Проверяем, что rowIndex за пределами [Offset, Offset + Viewport-1])
-        //    else if (rowIndex >= VerticalOffset + viewportHeightInRows)
-        //    {
-        //        // Ставим её на самый низ
-        //        SetVerticalOffset(rowIndex - viewportHeightInRows + 1);
-        //    }
-        //}
-
-        // 1. Метод переименован, чтобы не конфликтовать с базовым
-        private void UpdateMetrics()
-        {
-            _scrollData.Extent.Height = _manager.Count;
-            _scrollData.Viewport.Height = (RowHeight > 0) ? Math.Floor(ActualHeight / RowHeight) : 0;
-            _scrollData.Extent.Width = _manager.TotalWidth;
-            _scrollData.Viewport.Width = ActualWidth;
-        }
-
-        // 2. Везде, где был UpdateScrollMetrics, делаем так:
-        //private void OnSizeChangedOrDataLoaded()
-        //{
-        //    UpdateScrollMetrics(); // Сначала обновляем цифры
-        //    base.UpdateScrollMetrics(); // Потом просим базу обновить UI скроллов
-        //}
-
-        protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
-        {
-            base.OnRenderSizeChanged(sizeInfo);
-            
-            UpdateScrollMetrics();
-            //UpdateMetrics(); // Сначала наши цифры
-          //  base.UpdateScrollMetrics(); // Потом UI скроллов
-        }
-
-        protected override void OnRender(DrawingContext dc)
-        {
-
-            System.Diagnostics.Debug.WriteLine($"[RENDER] Drawing frame. Passing Offset Y: {this.VerticalOffset:F2}");
-
-            _manager.VerticalOffset = this.VerticalOffset;
-            _manager.HorizontalOffset = this.HorizontalOffset;
-            _manager.Render(dc, new Size(ActualWidth, ActualHeight));
-        }
-
-        public void SetData(IEnumerable source, Func<object, IEnumerable> selector)
-        {
-            _manager.SetSource(source, selector);
-
-            // [ВОССТАНОВИТЬ] Обновляем метрики после загрузки данных
-            UpdateScrollMetrics();
-            InvalidateVisual();
         }
     }
 }

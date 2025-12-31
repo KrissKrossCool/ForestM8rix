@@ -1,60 +1,18 @@
 ﻿<Window x:Class="ForestM8rix.WPF.Demo.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:m8="clr-namespace:ForestM8rix;assembly=ForestM8rix"
-        Title="ForestM8rix Performance Demo" Height="600" Width="1200">
+        xmlns:m8="clr-namespace:ForestM8rix;assembly=ForestM8rix" Background="Red"
+        WindowStartupLocation="CenterScreen"
+        Title="ForestM8rix Performance Demo" Height="600" Width="600">
 
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+        <m8:ForestM8rixView x:Name="MyForestView" 
+                            Background="White"
+                            HeaderHeight="35"/>
 
-        <!-- ПАНЕЛЬ УПРАВЛЕНИЯ -->
-        <Border Background="#EEE" Padding="10" Grid.Row="0">
-            <StackPanel Orientation="Horizontal"  VerticalAlignment="Center">
-                <TextBlock Text="Начало:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                <TextBox x:Name="TxtStart" Width="60" Text="100" VerticalAlignment="Center" Margin="0,0,10,0"/>
+        <!--<m8:ForestM8rixView x:Name="MyForestView"   Grid.Row="1"
+                                m8:ForestM8rixOptions.IsRubberBandEnabled="True" />-->
 
-                <TextBlock Text="Конец:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                <TextBox x:Name="TxtEnd" Width="60" Text="5000" VerticalAlignment="Center" Margin="0,0,10,0"/>
-
-                <Button Content="ВЫБРАТЬ (Range)" Click="BtnSelectRange_Click" Padding="10,5" Margin="0,0,10,0"/>
-                <Button Content="ВЫБРАТЬ (Random List)" Click="BtnSelectRandom_Click" Padding="10,5" Margin="0,0,10,0"/>
-                <Button Content="СБРОСИТЬ" Click="BtnClear_Click" Padding="10,5"/>
-
-                <TextBlock x:Name="TxtStatus" Text="Ready" FontWeight="Bold" Foreground="Blue" VerticalAlignment="Center" Margin="20,0,0,0"/>
-
-                <!-- Внутри <StackPanel> на панели управления -->
-
-                <Separator Margin="20,0"/>
-
-                <Button Content="UP (-50)" Click="BtnUp_Click" Padding="10,5" Margin="0,0,5,0"/>
-                <Button Content="DOWN (+50)" Click="BtnDown_Click" Padding="10,5" Margin="0,0,10,0"/>
-
-                <TextBlock Text="К %:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                <TextBox x:Name="TxtPercent" Width="50" Text="50" VerticalAlignment="Center"/>
-                <Button Content="Go" Click="BtnGoPercent_Click" Padding="10,5" Margin="5,0,0,0"/>
-
-            </StackPanel>
-        </Border>
-
-        <!-- КОНТРОЛ -->
-        <!-- Обратите внимание: ScrollViewer встроенный, настройки через свойства -->
-        <!--<m8:ForestM8rixView x:Name="ForestDisplay"   
-                            Grid.Row="1"
-                            ScrollViewer.HorizontalScrollBarVisibility="Visible"       
-                            ScrollViewer.VerticalScrollBarVisibility="Auto"                       
-                            m8:ForestM8rixOptions.IsRubberBandEnabled="True"      
-                            />-->
-        <ScrollViewer Grid.Row="1"
-                      CanContentScroll="True"
-                      HorizontalScrollBarVisibility="Auto"
-                      VerticalScrollBarVisibility="Auto">
-
-            <m8:ForestM8rixView x:Name="ForestDisplay"   
-                                m8:ForestM8rixOptions.IsRubberBandEnabled="True" />
-
-        </ScrollViewer>
+        
     </Grid>
 </Window>

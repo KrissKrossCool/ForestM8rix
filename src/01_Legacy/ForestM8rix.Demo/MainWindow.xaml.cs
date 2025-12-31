@@ -1,153 +1,65 @@
-﻿using System;
+﻿// [ПОЛНЫЙ]
+using ForestM8rix.Columns;
+using ForestM8rix.Testing;
+using ForestM8rix.WPF.Demo;
+using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Windows;
-using ForestM8rix;
 
-namespace ForestM8rix.WPF.Demo
+namespace ForestM8rix.WPF.Demo;
+
+public partial class MainWindow : Window
 {
-    public partial class MainWindow : Window
+    public MainWindow()
     {
-        private List<DemoItem> _allData; // Ссылка на исходные данные для поиска
+        InitializeComponent();
+        SetupDemo();
+    }
 
-        public MainWindow()
+    private void SetupDemo()
+    {
+        // 1. [TAG] Настройка колонок
+        // Используем Ваш класс ForestM8rixColumn
+        MyForestView.Manager.Columns.Add(new ForestM8rixColumn
         {
-            InitializeComponent();
-            System.Diagnostics.Debug.WriteLine("--> [CONSTRUCTOR] MainWindow created.");
-            Loaded += MainWindow_Loaded;
+            Header = "Структура проекта",
+            BindingPath = "Name",
+            Width = 300
+        });
+
+        MyForestView.Manager.Columns.Add(new ForestM8rixColumn
+        {
+            Header = "Информация",
+            BindingPath = "Info",
+            Width = 250
+        });
+
+        // 2. [TAG] Генерация тестовых данных (1000 корней по 3 ребенка)
+        var data = new List<FolderNode>();
+        for (int i = 1; i <= 1000; i++)
+        {
+            var root = new FolderNode($"Root Node {i}", $"System info {i}");
+            root.Children.Add(new FolderNode($"Child {i}.1", "Sub-resource"));
+            root.Children.Add(new FolderNode($"Child {i}.2", "Internal data"));
+            root.Children.Add(new FolderNode($"Child {i}.3", "Documentation"));
+            data.Add(root);
         }
 
-        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
-        {
-            System.Diagnostics.Debug.WriteLine("--> [EVENT] MainWindow_Loaded fired.");
-            // 1. Настройка
-            var mgr = ForestDisplay.Manager;
-            mgr.Columns.Clear();
-            mgr.Columns.Add(new ForestColumn("Name", 300, n => (n as DemoItem)?.Title));
-            mgr.Columns.Add(new ForestColumn("ID", 100, n => (n as DemoItem)?.Id.ToString()));
-            mgr.Columns.Add(new ForestColumn("Status", 150, n => (n as DemoItem)?.Status));
+        // 3. [TAG] Инициализация источника
+        // Передаем данные и селектор детей (node => node.Children)
+        MyForestView.Manager.SetItemsSource(data, node => ((FolderNode)node).Children);
+    }
+}
 
-            // 2. Генерация (100k)
-            int count = 100000;
-            Debug.WriteLine($"Generating {count} items...");
-            _allData = GenerateData(count);
+public class FolderNode
+{
+    public string Name { get; set; }
+    public string Info { get; set; }
+    public List<FolderNode> Children { get; set; } = new List<FolderNode>();
 
-            // 3. Загрузка
-            ForestDisplay.SetData(_allData, node => ((DemoItem)node).Children);
-            Debug.WriteLine("Data Loaded.");
-        }
-
-        private void BtnSelectRange_Click(object sender, RoutedEventArgs e)
-        {
-            if (!int.TryParse(TxtStart.Text, out int start)) start = 0;
-            if (!int.TryParse(TxtEnd.Text, out int end)) end = 0;
-
-            if (start > end) { var t = start; start = end; end = t; }
-            if (end >= _allData.Count) end = _allData.Count - 1;
-
-            // Формируем список объектов для выделения
-            var selectionList = new List<object>();
-            for (int i = start; i <= end; i++)
-            {
-                selectionList.Add(_allData[i]);
-            }
-
-            Debug.WriteLine($"Selecting range [{start}..{end}] ({selectionList.Count} items)...");
-
-            Stopwatch sw = Stopwatch.StartNew();
-
-            // СУТЬ: Управляем через Attached Property (как будто из Binding)
-            SelectionData.SetList(ForestDisplay, selectionList);
-
-            sw.Stop();
-            TxtStatus.Text = $"Selected {selectionList.Count} items in {sw.ElapsedMilliseconds} ms";
-            Debug.WriteLine($"Done in {sw.ElapsedMilliseconds} ms");
-        }
-
-        private void BtnSelectRandom_Click(object sender, RoutedEventArgs e)
-        {
-            var rnd = new Random();
-            var selectionList = new List<object>();
-            for (int i = 0; i < 5000; i++) // 5000 случайных
-            {
-                int idx = rnd.Next(_allData.Count);
-                selectionList.Add(_allData[idx]);
-            }
-
-            Debug.WriteLine($"Selecting {selectionList.Count} random items...");
-            Stopwatch sw = Stopwatch.StartNew();
-
-            SelectionData.SetList(ForestDisplay, selectionList);
-
-            sw.Stop();
-            TxtStatus.Text = $"Random Select ({selectionList.Count}) in {sw.ElapsedMilliseconds} ms";
-            Debug.WriteLine($"Done in {sw.ElapsedMilliseconds} ms");
-        }
-
-        private void BtnClear_Click(object sender, RoutedEventArgs e)
-        {
-            SelectionData.SetList(ForestDisplay, null); // Сброс
-            TxtStatus.Text = "Selection Cleared";
-        }
-
-        // Добавить эти обработчики в класс MainWindow
-
-        // Заменить обработчики BtnUp_Click и BtnDown_Click
-
-        private void BtnUp_Click(object sender, RoutedEventArgs e)
-        {
-            var logic = ForestDisplay as ScrollLogic;
-            if (logic != null)
-            {
-                // Скроллим на одну видимую страницу вверх
-                logic.SetVerticalOffset(logic.VerticalOffset - logic.ViewportHeight);
-            }
-        }
-
-        private void BtnDown_Click(object sender, RoutedEventArgs e)
-        {
-            var logic = ForestDisplay as ScrollLogic;
-            if (logic != null)
-            {
-                // Скроллим на одну видимую страницу вниз
-                logic.SetVerticalOffset(logic.VerticalOffset + logic.ViewportHeight);
-            }
-        }
-
-
-        private void BtnGoPercent_Click(object sender, RoutedEventArgs e)
-        {
-            var logic = ForestDisplay as ScrollLogic;
-            if (logic != null && double.TryParse(TxtPercent.Text, out double percent))
-            {
-               // logic.ScrollToPercent(percent);
-                Debug.WriteLine($"BtnGoPercent_Click {percent}");
-            }
-        }
-
-
-        // --- DATA MODEL ---
-        public class DemoItem
-        {
-            public string Title { get; set; }
-            public int Id { get; set; }
-            public string Status { get; set; }
-            public List<DemoItem> Children { get; set; } = new();
-        }
-
-        private List<DemoItem> GenerateData(int count)
-        {
-            var list = new List<DemoItem>(count);
-            for (int i = 0; i < count; i++)
-            {
-                list.Add(new DemoItem
-                {
-                    Title = $"Item {i}",
-                    Id = i,
-                    Status = i % 2 == 0 ? "Active" : "Idle"
-                });
-            }
-            return list;
-        }
+    public FolderNode(string name, string info)
+    {
+        Name = name;
+        Info = info;
     }
 }

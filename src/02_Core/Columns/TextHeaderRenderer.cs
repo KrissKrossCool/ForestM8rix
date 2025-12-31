@@ -6,16 +6,18 @@ namespace ForestM8rix.Columns
 {
     public class TextHeaderRenderer : IHeaderRenderer
     {
+        private readonly FrameworkElement _host;
         private readonly ForestM8rixColumn _column;
 
-        public TextHeaderRenderer(ForestM8rixColumn column)
+        public TextHeaderRenderer(FrameworkElement host, ForestM8rixColumn column)
         {
+            _host = host;
             _column = column;
         }
 
         public void Draw(DrawingContext dc, Rect rect)
         {
-            if (string.IsNullOrEmpty(_column.Title)) return;
+            if (string.IsNullOrEmpty(_column.Header)) return;
 
             // Настраиваем шрифт (используем стандартные значения, чтобы не ломать код)
             var typeface = new Typeface(
@@ -25,7 +27,7 @@ namespace ForestM8rix.Columns
                 FontStretches.Normal);
 
             var formattedText = new FormattedText(
-                _column.Title,
+                _column.Header,
                 CultureInfo.CurrentCulture,
                 FlowDirection.LeftToRight,
                 typeface,
