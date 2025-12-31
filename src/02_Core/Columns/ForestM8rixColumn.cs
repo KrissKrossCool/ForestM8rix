@@ -4,34 +4,53 @@ namespace ForestM8rix.Columns
 {
     public class ForestM8rixColumn : DependencyObject
     {
-        // Поля для оптимизации (кэширования)
-        private IHeaderRenderer _cachedRenderer;
-        private DataTemplate _lastTemplate;
+        private IHeaderRenderer? _cachedRenderer;
+        private DataTemplate? _lastAppliedTemplate;
+        private string? _lastTitle;
 
-        // Основные свойства (POCO для MVP)
-        public string Title { get; set; }
-        public double Width { get; set; } = 100;
-        public DataTemplate HeaderTemplate { get; set; }
+        // [СУТЬ] DependencyProperty для Width (чтобы работали триггеры)
+        public static readonly DependencyProperty WidthProperty =
+            DependencyProperty.Register(nameof(Width), typeof(double), typeof(ForestM8rixColumn),
+                new PropertyMetadata(100.0));
+
+        public double Width
+        {
+            get => (double)GetValue(WidthProperty);
+            set => SetValue(WidthProperty, value);
+        }
+
+        // [СУТЬ] DependencyProperty для HeaderTemplate
+        public static readonly DependencyProperty HeaderTemplateProperty =
+            DependencyProperty.Register(nameof(HeaderTemplate), typeof(DataTemplate), typeof(ForestM8rixColumn),
+                new PropertyMetadata(null));
+
+        public DataTemplate? HeaderTemplate
+        {
+            get => (DataTemplate?)GetValue(HeaderTemplateProperty);
+            set => SetValue(HeaderTemplateProperty, value);
+        }
+
+        public string? Title { get; set; } // Можно оставить обычным, если не биндим его
 
         /// <summary>
-        /// Возвращает инструмент для отрисовки шапки. 
-        /// Реализует логику кэширования: создает новый объект только при смене шаблона.
+        /// Возвращает рендерер. Если XAML-стиль подменил HeaderTemplate через триггер,
+        /// этот метод мгновенно пересоздаст нужный рендерер.
         /// </summary>
         public IHeaderRenderer GetHeaderRenderer()
         {
-            // Если шаблон подменили в процессе работы
-            if (_lastTemplate != HeaderTemplate)
-            {
-                _cachedRenderer = null;
-                _lastTemplate = HeaderTemplate;
-            }
+            var activeTemplate = HeaderTemplate;
 
-            // Создаем рендерер один раз
-            if (_cachedRenderer == null)
+            if (_cachedRenderer == null || _lastAppliedTemplate != activeTemplate || _lastTitle != Title)
             {
-                _cachedRenderer = HeaderTemplate != null
-                    ? new TemplateHeaderRenderer(this)
-                    : new TextHeaderRenderer(this);
+                _lastAppliedTemplate = activeTemplate;
+                _lastTitle = Title;
+
+                if (activeTemplate != null)
+                    _cachedRenderer = new TemplateHeaderRenderer(this);
+                else if (!string.IsNullOrEmpty(Title))
+                    _cachedRenderer = new TextHeaderRenderer(this);
+                else
+                    _cachedRenderer = new EmptyHeaderRenderer();
             }
 
             return _cachedRenderer;
