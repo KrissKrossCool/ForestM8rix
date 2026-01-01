@@ -1,18 +1,15 @@
 ﻿<Window x:Class="ForestM8rix.WPF.Demo.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:m8="clr-namespace:ForestM8rix;assembly=ForestM8rix" Background="Red"
-        WindowStartupLocation="CenterScreen"
+        xmlns:m8="clr-namespace:ForestM8rix;assembly=ForestM8rix" 
+        WindowStartupLocation="CenterScreen" Background="Transparent"
         Title="ForestM8rix Performance Demo" Height="600" Width="600">
-
     <Grid>
-        <m8:ForestM8rixView x:Name="MyForestView" 
+        <m8:ForestM8rixView x:Name="MatrixView" 
                             Background="White"
                             HeaderHeight="35"/>
-
-        <!--<m8:ForestM8rixView x:Name="MyForestView"   Grid.Row="1"
-                                m8:ForestM8rixOptions.IsRubberBandEnabled="True" />-->
-
+                            <!--VerticalAlignment="Top"
+                            HorizontalAlignment="Left"-->
         
     </Grid>
 </Window>

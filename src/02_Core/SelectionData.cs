@@ -42,7 +42,7 @@ namespace ForestM8rix;
             if (d is ForestM8rixView view && view.Manager != null)
             {
                 // SetSelection сам разберется, это новый объект или тот же самый
-                view.Manager.SetSelection(e.NewValue);
+                //view.Manager.SetSelection(e.NewValue);
             }
         }
 
@@ -51,7 +51,7 @@ namespace ForestM8rix;
             // Если список изменился (или заменили коллекцию)
             if (d is ForestM8rixView view && view.Manager != null)
             {
-                view.Manager.SetSelection(e.NewValue);
+                //view.Manager.SetSelection(e.NewValue);
             }
         }
     }

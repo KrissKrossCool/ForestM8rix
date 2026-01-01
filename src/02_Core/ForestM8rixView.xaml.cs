@@ -1,72 +1,84 @@
-﻿// [ПОЛНЫЙ]
-using System;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-using ForestM8rix.Columns;
-using ForestM8rix.Core;
+﻿//// [ПОЛНЫЙ] UI/ForestM8rixView.xaml.cs
+//using System;
+//using System.Windows;
+//using System.Windows.Controls;
+//using System.Windows.Input;
+//using System.Windows.Media;
 
-namespace ForestM8rix;
+//namespace ForestM8rix
+//{
+//    /// <summary>
+//    /// Часть класса, отвечающая за связь с XAML-шаблоном (TemplateParts).
+//    /// </summary>
+//    public partial class ForestM8rixView2
+//    {
+//        private FrameworkElement _scrollContent;
+//        private ScrollViewer _scrollViewer;
+//        private ForestCanvas _internalCanvas;
 
-public partial class ForestM8rixView : Control
-{
-    //private readonly ForestM8rixManager _manager;
+//        public override void OnApplyTemplate()
+//        {
+//            base.OnApplyTemplate();
+//            _scrollContent = GetTemplateChild("PART_ScrollContent") as FrameworkElement;
+//            _scrollViewer = GetTemplateChild("PART_ScrollViewer") as ScrollViewer;
 
-    public ForestM8rixView()
-    {
-        // Инициализируем менеджера, передавая ему "себя" как хост для отрисовки
-        _manager = new ForestM8rixManager(this);
+//            if (_scrollViewer != null)
+//            {
+//                _scrollViewer.ScrollChanged += (s, e) => {
+//                    Manager?.HandleScroll(_scrollViewer.VerticalOffset, _scrollViewer.HorizontalOffset);
+//                };
+//            }
+//            Manager?.UpdateVisualParams();
+//        }
 
-        // Подписываемся на события мыши
-        this.MouseDown += OnMouseDownInternal;
+//        public  void OnApplyTemplate2()
+//        {
+//            base.OnApplyTemplate();
 
-        // Улучшаем производительность: говорим WPF, что у нас есть фон
-        this.Focusable = true;
-    }
+//            // 1. Ищем ScrollViewer для управления прокруткой
+//            _scrollViewer = GetTemplateChild("PART_ScrollViewer") as ScrollViewer;
 
-    private void OnMouseDownInternal(object sender, MouseButtonEventArgs e)
-    {
-        // Передаем управление менеджеру
-        var pos = e.GetPosition(this);
-        bool isCtrl = Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl);
-        bool isShift = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift);
+//            // 2. Ищем и настраиваем холст отрисовки
+//            if (GetTemplateChild("PART_Canvas") is Canvas placeholder)
+//            {
+//                _internalCanvas = new ForestCanvas { OwnerManager = _manager };
 
-        _manager.OnCanvasMouseDown(pos, isCtrl, isShift);
+//                // Если в шаблоне был заглушечный Canvas, заменяем его контент или кладем сверху
+//                if (_scrollViewer != null)
+//                {
+//                    _scrollViewer.Content = _internalCanvas;
+//                }
 
-        // Запрашиваем фокус для обработки клавиш в будущем
-        this.Focus();
-    }
+//                // Подписка на клики именно по холсту (для точности координат)
+//                _internalCanvas.MouseDown += (s, e) =>
+//                {
+//                    this.Focus();
+//                    _manager.HandleMouseDown(
+//                        e.GetPosition(_internalCanvas),
+//                        Keyboard.Modifiers.HasFlag(ModifierKeys.Control),
+//                        Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
+//                };
+//            }
 
-    protected override void OnRender(DrawingContext dc)
-    {
-        base.OnRender(dc);
+//            // 3. Синхронизация прокрутки с DisplayService
+//            if (_scrollViewer != null)
+//            {
+//                _scrollViewer.ScrollChanged += (s, e) =>
+//                {
+//                    // Сообщаем менеджеру новые оффсеты (в индексах строк и пикселях X)
+//                    double rowH = _manager.Display.RowHeight * _manager.Scale;
+//                    _manager.HandleScroll(e.VerticalOffset / rowH, e.HorizontalOffset);
+//                };
+//            }
 
-        // Если данных нет — рисовать нечего
-        if (_manager.Nodes == null || _manager.Nodes.Length == 0) return;
+//            // Инициализируем визуальные параметры (шрифт, DPI)
+//            _manager.UpdateVisualParams();
+//        }
 
-        double rowH = ForestM8rixOptions.GetRowHeight(this) * _manager.Scale;
-        double viewW = this.ActualWidth;
-
-        // В будущем здесь будет логика виртуализации (отрисовка только видимых строк)
-        for (int i = 0; i < _manager.Nodes.Length; i++)
-        {
-            double y = i * rowH;
-            // Временно передаем пустой список колонок или получаем их из свойств
-            _manager.RenderRow(dc, i, y, rowH, viewW, GetCurrentColumns());
-        }
-    }
-
-    private List<ForestM8rixColumn> GetCurrentColumns()
-    {
-        // Заглушка: в будущем здесь будет коллекция колонок из DP
-        return new List<ForestM8rixColumn>();
-    }
-
-    // Обновляем параметры DPI при изменении монитора
-    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
-    {
-        base.OnDpiChanged(oldDpi, newDpi);
-        _manager.UpdateVisualParams();
-    }
-}
+//        protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+//        {
+//            base.OnDpiChanged(oldDpi, newDpi);
+//            _manager.RequestRender();
+//        }
+//    }
+//}

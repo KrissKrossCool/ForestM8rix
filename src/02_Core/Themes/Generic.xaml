@@ -3,8 +3,93 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="clr-namespace:ForestM8rix"
     xmlns:rendering="clr-namespace:ForestM8rix.Rendering">
-
     <Style TargetType="{x:Type local:ForestM8rixView}">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:ForestM8rixView}">
+                    <Grid Background="Transparent">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <rendering:ForestM8rixHeader Grid.Row="0" Height="35" />
+
+                        <ScrollViewer x:Name="PART_ScrollViewer" 
+                      Grid.Row="1"
+                      Background="{x:Null}">
+                            <Canvas x:Name="PART_Canvas" Background="Transparent" />
+                        </ScrollViewer>
+                    </Grid>
+                </ControlTemplate>
+                <!--<ControlTemplate TargetType="{x:Type local:ForestM8rixView}">
+                    <Grid Background="{TemplateBinding Background}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <rendering:ForestM8rixHeader x:Name="PART_Header" 
+                        Grid.Row="0"
+                        Height="{TemplateBinding HeaderHeight}"
+                        Scale="{Binding Manager.Scale, RelativeSource={RelativeSource TemplatedParent}}"
+                        Columns="{Binding Manager.Column, RelativeSource={RelativeSource TemplatedParent}}"/>
+                        <ScrollViewer x:Name="PART_ScrollViewer" 
+                      Grid.Row="1"
+                      Background="{x:Null}"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto">
+
+                            <Canvas x:Name="PART_Canvas" 
+                    Background="Transparent" 
+                    IsHitTestVisible="False" />
+                        </ScrollViewer>
+                        --><!--<ScrollViewer x:Name="PART_ScrollViewer" 
+                                  Grid.Row="1"
+                                  Background="Transparent"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto">
+                            <Canvas x:Name="PART_Canvas" Background="Transparent" IsHitTestVisible="False"/>
+                        </ScrollViewer>--><!--
+                    </Grid>
+                </ControlTemplate>-->
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--<Style TargetType="{x:Type local:ForestM8rixView}">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:ForestM8rixView}">
+                    <Grid Background="{TemplateBinding Background}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <rendering:ForestM8rixHeader x:Name="PART_Header" 
+                        Grid.Row="0"
+                        Height="{TemplateBinding HeaderHeight}"
+                        Scale="{Binding Manager.Scale, RelativeSource={RelativeSource TemplatedParent}}"
+                        Columns="{Binding Manager.Column, RelativeSource={RelativeSource TemplatedParent}}"/>
+
+                        <ScrollViewer x:Name="PART_ScrollViewer" 
+                                  Grid.Row="1"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto">
+                            <FrameworkElement x:Name="PART_ScrollContent" 
+                                          HorizontalAlignment="Left" 
+                                          VerticalAlignment="Top"/>
+                        </ScrollViewer>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>-->
+
+    <!--<Style TargetType="{x:Type local:ForestM8rixView}">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -23,10 +108,10 @@
                 HorizontalAlignment="Stretch"
                 Background="Transparent"
                 Scale="{Binding Manager.Scale, RelativeSource={RelativeSource TemplatedParent}}"
-                Columns="{Binding Manager.Columns, RelativeSource={RelativeSource TemplatedParent}}"
+                Columns="{Binding Manager.Column, RelativeSource={RelativeSource TemplatedParent}}"
                 HorizontalOffset="{Binding HorizontalOffset, ElementName=PART_ScrollViewer}"/>
 
-                            <!--<Border BorderBrush="DarkGray" BorderThickness="0,0,0,1" VerticalAlignment="Bottom"/>-->
+                            --><!--<Border BorderBrush="DarkGray" BorderThickness="0,0,0,1" VerticalAlignment="Bottom"/>--><!--
                         </Border>
 
                         <ScrollViewer x:Name="PART_ScrollViewer" 
@@ -44,5 +129,5 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
-    </Style>
+    </Style>-->
 </ResourceDictionary>

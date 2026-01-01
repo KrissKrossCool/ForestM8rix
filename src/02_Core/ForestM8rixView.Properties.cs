@@ -8,12 +8,12 @@ namespace ForestM8rix
     // [ПОЛНЫЙ] Часть 1: Свойства зависимости
     public partial class ForestM8rixView : Control
     {
-        static ForestM8rixView()
-        {
-            // Сообщаем WPF, что мы сами рисуем контрол (OnRender), а не через шаблон
-            DefaultStyleKeyProperty.OverrideMetadata(typeof(ForestM8rixView),
-                new FrameworkPropertyMetadata(typeof(ForestM8rixView)));
-        }
+        //static ForestM8rixView()
+        //{
+        //    // Сообщаем WPF, что мы сами рисуем контрол (OnRender), а не через шаблон
+        //    DefaultStyleKeyProperty.OverrideMetadata(typeof(ForestM8rixView),
+        //        new FrameworkPropertyMetadata(typeof(ForestM8rixView)));
+        //}
 
         // Данные (Дерево)
         public static readonly DependencyProperty ForestInputProperty =
@@ -67,8 +67,8 @@ namespace ForestM8rix
             var view = (ForestM8rixView)d;
             if (view._manager != null)
             {
-                view._manager.ChildSelector = e.NewValue as Func<object, IEnumerable>;
-                view._manager.RefreshFlatList();
+                //view._manager.ChildSelector = e.NewValue as Func<object, IEnumerable>;
+                //view._manager.RefreshFlatList();
             }
         }
 

@@ -101,7 +101,7 @@ namespace ForestM8rix.Rendering
         /// <summary>
         /// Отрисовка экспандера (треугольника)
         /// </summary>
-        public static void DrawExpander(DrawingContext dc, Point center, bool isExpanded, Brush color)
+        public static void DrawExpander1(DrawingContext dc, Point center, bool isExpanded, Brush color)
         {
             var geometry = new StreamGeometry();
             using (var context = geometry.Open())
@@ -117,6 +117,29 @@ namespace ForestM8rix.Rendering
                     context.BeginFigure(new Point(center.X - 2, center.Y - 4), true, true);
                     context.LineTo(new Point(center.X - 2, center.Y + 4), true, false);
                     context.LineTo(new Point(center.X + 3, center.Y), true, false);
+                }
+            }
+            dc.DrawGeometry(color, null, geometry);
+        }
+        // [ПОЛНЫЙ]
+        public static void DrawExpander(DrawingContext dc, Point center, bool isExpanded, Brush color)
+        {
+            var geometry = new StreamGeometry();
+            using (var context = geometry.Open())
+            {
+                if (isExpanded)
+                {
+                    // Увеличено в 2 раза (было -4/4/-2/3 стало -8/8/-4/6)
+                    context.BeginFigure(new Point(center.X - 8, center.Y - 4), true, true);
+                    context.LineTo(new Point(center.X + 8, center.Y - 4), true, false);
+                    context.LineTo(new Point(center.X, center.Y + 6), true, false);
+                }
+                else
+                {
+                    // Увеличено в 2 раза (было -2/4/3 стало -4/8/6)
+                    context.BeginFigure(new Point(center.X - 4, center.Y - 8), true, true);
+                    context.LineTo(new Point(center.X - 4, center.Y + 8), true, false);
+                    context.LineTo(new Point(center.X + 6, center.Y), true, false);
                 }
             }
             dc.DrawGeometry(color, null, geometry);

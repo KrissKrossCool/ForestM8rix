@@ -1,144 +1,141 @@
 ﻿// [ПОЛНЫЙ]
-using ForestM8rix.Core;
-using ForestM8rix.Rendering;
-using ForestM8rix.StateManagement;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-
 namespace ForestM8rix
 {
-    [TemplatePart(Name = "PART_ScrollViewer", Type = typeof(ScrollViewer))]
-    [TemplatePart(Name = "PART_Canvas", Type = typeof(Canvas))]
-    [TemplatePart(Name = "PART_Header", Type = typeof(ForestM8rixHeader))]
-    public partial class ForestM8rixView : Control
+    using System.Windows;
+    using System.Windows.Media;
+    using System.Windows.Controls;
+    using ForestM8rix.Core;
+
+    public partial class ForestM8rixView
     {
-        private ScrollViewer _scrollViewer;
-        private ForestCanvas _internalCanvas;
         private readonly ForestM8rixManager _manager;
+        private Canvas _canvas;
+        private ScrollViewer _scrollViewer;
 
         public ForestM8rixManager Manager => _manager;
 
-        // Конструктор
-        //public ForestM8rixView()
-        //{
-        //    // Передаем this, чтобы менеджер мог брать настройки (Font, DPI)
-        //    _manager = new ForestM8rixManager(this);
-        //}
+        public ForestM8rixView()
+        {
+            // Менеджер создается внутри и привязывается к этому View
+            _manager = new ForestM8rixManager(this);
+
+            // Принудительно задаем начальные значения из DP
+            _manager.Scale = this.Scale;
+        }
+
+        static ForestM8rixView()
+        {
+            DefaultStyleKeyProperty.OverrideMetadata(typeof(ForestM8rixView),
+                new FrameworkPropertyMetadata(typeof(ForestM8rixView)));
+        }
 
         public override void OnApplyTemplate()
         {
             base.OnApplyTemplate();
-
             _scrollViewer = GetTemplateChild("PART_ScrollViewer") as ScrollViewer;
 
-            // 1. [TAG] Настройка заголовка
-            if (GetTemplateChild("PART_Header") is ForestM8rixHeader header)
-            {
-                // Привязываем колонки напрямую из нашего менеджера
-                header.Columns = _manager.Columns;
-                header.InvalidateVisual();
-            }
-
-            // 2. [TAG] Подмена холста
-            if (GetTemplateChild("PART_Canvas") is Canvas placeholder)
-            {
-                _internalCanvas = new ForestCanvas
-                {
-                    OwnerManager = _manager,
-                    Background = Brushes.Transparent // Критично для регистрации мыши
-                };
-
-                if (_scrollViewer != null)
-                    _scrollViewer.Content = _internalCanvas;
-            }
-
-            // 3. [TAG] Синхронизация скролла
+            // [TAG] FIX_VISIBILITY: Чтобы OnRender был виден, 
+            // у ScrollViewer не должно быть контента, который его перекроет.
             if (_scrollViewer != null)
             {
-                _scrollViewer.ScrollChanged += (s, e) =>
-                {
-                    // Обновляем оффсеты в менеджере для правильного клика
-                    _manager.VerticalOffset = e.VerticalOffset / (_manager.RowHeight * _manager.Scale);
-                    _manager.HorizontalOffset = e.HorizontalOffset;
-
-                    // Синхронизируем заголовок (чтобы не уплывал при горизонтальном скролле)
-                    if (GetTemplateChild("PART_Header") is ForestM8rixHeader h)
-                    {
-                        h.HorizontalOffset = e.HorizontalOffset;
-                        h.InvalidateVisual();
-                    }
-
-                    _internalCanvas?.InvalidateVisual();
+                _scrollViewer.ScrollChanged += (s, e) => {
+                    _manager.HandleScroll(_scrollViewer.VerticalOffset, _scrollViewer.HorizontalOffset);
+                    InvalidateVisual();
                 };
             }
+        }
+        //protected override void OnRender(DrawingContext dc)
+        //{
+        //    // 1. Заливаем всё красным, чтобы проверить "пробитие" сквозь прозрачный скроллер
+        //    dc.DrawRectangle(Brushes.Red, null, new Rect(RenderSize));
 
-            if (_internalCanvas != null)
-                _internalCanvas.MouseDown += OnCanvasMouseDown;
+        //    if (_manager == null || _manager.Count == 0) return;
+
+        //    // 2. Рисуем дерево без всяких смещений (0, 0)
+        //    // Если оно появится под шапкой - значит всё ок.
+        //    _manager.Display.Render(dc, RenderSize);
+        //}
+
+        // [СУТЬ]
+        // [СУТЬ] Локализация проблемы внутри ForestM8rixServiceDisplay
+        // [TAG] FORCED_RENDER
+        // [СУТЬ] Исправляем OnRender для работы с шапкой
+        protected override void OnRender(DrawingContext dc)
+        {
+            // Оставляем синий фон (пока не настроим всё, он наш индикатор успеха)
+            dc.DrawRectangle(Brushes.Blue, null, new Rect(RenderSize));
+
+            if (_manager == null || _manager.Count == 0) return;
+
+            // [TAG] FIX_COORDINATES: Сдвигаем всё дерево на 35 пикселей вниз
+            dc.PushTransform(new TranslateTransform(0, HeaderHeight));
+
+            // Рисуем данные. Передаем размер области БЕЗ шапки
+            var dataSize = new Size(RenderSize.Width, Math.Max(0, RenderSize.Height - HeaderHeight));
+            _manager.Display.Render(dc, dataSize);
+
+            ExpandEverything();
+
+            dc.Pop();
         }
 
-        private void OnCanvasMouseDown(object sender, MouseButtonEventArgs e)
+        // [СУТЬ] Принудительное раскрытие при старте
+        // [СУТЬ]
+        public void ExpandEverything()
         {
-            Point pos = e.GetPosition(_internalCanvas);
-            double sRowH = _manager.RowHeight * _manager.Scale;
-
-            // Индекс строки с учетом виртуализации/смещения
-            int rowIdx = (int)(pos.Y / sRowH);
-
-            if (rowIdx >= 0 && rowIdx < _manager.Nodes.Length)
+            // 1. Если узлы — это просто объекты данных, 
+            // состояние хранится в ExpansionService
+            foreach (var node in _manager.Nodes)
             {
-                object node = _manager.Nodes[rowIdx];
-                int level = _manager.Levels[rowIdx];
+                // Используем сервис расширения, чтобы пометить узел как раскрытый
+                _manager.Expansion.Toggle(node);
+            }
 
-                // Область экспандера (X)
-                double indentX = level * _manager.IndentSize * _manager.Scale;
-                double expanderClickArea = 20 * _manager.Scale;
+            // 2. Просим менеджер перестроить плоский список из дерева
+            _manager.Refresh();
 
-                if (pos.X >= indentX && pos.X <= indentX + expanderClickArea)
-                {
-                    // Логика Toggle (Ваш подход)
-                    bool isNowExpanded = !ForestStateRegistry.IsExpanded(node);
-                    ForestStateRegistry.SetExpanded(node, isNowExpanded);
+            // 3. Перерисовываем синий экран
+            InvalidateVisual();
+        }
 
-                    //_manager.RefreshFlatList(); // Пересобираем дерево
-                    ////UpdateLayout(); // Обновляем размеры ScrollViewer (ExtentHeight)
-                    //_internalCanvas?.InvalidateVisual();
-                    //Debug.WriteLine("If - OnCanvasMouseDown");
+        //protected override void OnRender(DrawingContext dc)
+        //{
+        //    dc.DrawRectangle(Background ?? Brushes.White, null, new Rect(RenderSize));
 
-                    // Синхронизируем размер холста с новым кол-вом строк
-                    if (_internalCanvas != null)
-                    {
-                        _internalCanvas.Height = _manager.Nodes.Length * sRowH;
-                        _internalCanvas.InvalidateVisual();
-                    }
+        //    if (_manager == null || _manager.Count == 0) return;
 
-                    Debug.WriteLine($"IF: Node {rowIdx} Expanded: {isNowExpanded}");
-                }
-                else
-                {
-                    // Выделение
-                    _manager.SetSelection(node);
-                    _internalCanvas?.InvalidateVisual();
-                    Debug.WriteLine($"ELSE: Node {rowIdx} Selected");
-                    // Обычный выбор строки
-                    //_manager.OnCanvasMouseDown(pos, Keyboard.Modifiers.HasFlag(ModifierKeys.Control), Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
-                }
+        //    // [TAG] RENDERING_ZONE: Отрисовка строго под шапкой
+        //    var dataArea = new Rect(0, HeaderHeight, RenderSize.Width, Math.Max(0, RenderSize.Height - HeaderHeight));
+
+        //    dc.PushClip(new RectangleGeometry(dataArea));
+        //    dc.PushTransform(new TranslateTransform(0, HeaderHeight));
+
+        //    _manager.Display.Render(dc, dataArea.Size);
+
+        //    dc.Pop(); // Pop Transform
+        //    dc.Pop(); // Pop Clip
+        //}
+
+        protected override void OnMouseDown(System.Windows.Input.MouseButtonEventArgs e)
+        {
+            Point pos = e.GetPosition(this);
+            if (pos.Y >= HeaderHeight)
+            {
+                Point dataPos = new Point(pos.X, pos.Y - HeaderHeight);
+                bool ctrl = System.Windows.Input.Keyboard.IsKeyDown(System.Windows.Input.Key.LeftCtrl);
+                bool shift = System.Windows.Input.Keyboard.IsKeyDown(System.Windows.Input.Key.LeftShift);
+
+                _manager.HandleMouseDown(dataPos, ctrl, shift);
             }
         }
 
-        // [СУТЬ] Изолированный рендерер
-        private class ForestCanvas : Canvas
+        internal void UpdateExtent(Size extent)
         {
-            public ForestM8rixManager OwnerManager { get; set; }
-
-            protected override void OnRender(DrawingContext dc)
+            if (_canvas != null)
             {
-                // Используем RenderManager для отрисовки всего дерева
-                OwnerManager?.RenderAll(dc, RenderSize);
+                _canvas.Width = extent.Width;
+                _canvas.Height = extent.Height;
+                InvalidateVisual();
             }
         }
     }
