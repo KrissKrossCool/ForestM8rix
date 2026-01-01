@@ -4,6 +4,7 @@ using ForestM8rix.Rendering;
 using ForestM8rix.StateManagement;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -103,13 +104,28 @@ namespace ForestM8rix
                     bool isNowExpanded = !ForestStateRegistry.IsExpanded(node);
                     ForestStateRegistry.SetExpanded(node, isNowExpanded);
 
-                    _manager.RefreshFlatList(); // Пересобираем дерево
-                    UpdateLayout(); // Обновляем размеры ScrollViewer (ExtentHeight)
+                    //_manager.RefreshFlatList(); // Пересобираем дерево
+                    ////UpdateLayout(); // Обновляем размеры ScrollViewer (ExtentHeight)
+                    //_internalCanvas?.InvalidateVisual();
+                    //Debug.WriteLine("If - OnCanvasMouseDown");
+
+                    // Синхронизируем размер холста с новым кол-вом строк
+                    if (_internalCanvas != null)
+                    {
+                        _internalCanvas.Height = _manager.Nodes.Length * sRowH;
+                        _internalCanvas.InvalidateVisual();
+                    }
+
+                    Debug.WriteLine($"IF: Node {rowIdx} Expanded: {isNowExpanded}");
                 }
                 else
                 {
+                    // Выделение
+                    _manager.SetSelection(node);
+                    _internalCanvas?.InvalidateVisual();
+                    Debug.WriteLine($"ELSE: Node {rowIdx} Selected");
                     // Обычный выбор строки
-                    _manager.OnCanvasMouseDown(pos, Keyboard.Modifiers.HasFlag(ModifierKeys.Control), Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
+                    //_manager.OnCanvasMouseDown(pos, Keyboard.Modifiers.HasFlag(ModifierKeys.Control), Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
                 }
             }
         }
