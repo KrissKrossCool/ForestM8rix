@@ -74,7 +74,7 @@ namespace ForestM8rix
             var dataSize = new Size(RenderSize.Width, Math.Max(0, RenderSize.Height - HeaderHeight));
             _manager.Display.Render(dc, dataSize);
 
-            ExpandEverything();
+            //ExpandEverything();
 
             dc.Pop();
         }
